@@ -602,6 +602,18 @@ const leaveTimer = useRef(null);
       return {sx, cx, x: r.right + 6, y: r.top};
     });
   };
+  const leaveTimer = useRef(null);
+  const onCellEnter = (sx, cx, ev) => {
+    if (leaveTimer.current) {
+      cancelAnimationFrame(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+    const r = ev.currentTarget.getBoundingClientRect();
+    setHover(prev => {
+      if (prev && prev.sx === sx && prev.cx === cx) return prev;
+      return {sx, cx, x: r.right + 6, y: r.top};
+    });
+  };
   const onCellLeave = () => {
     if (leaveTimer.current) cancelAnimationFrame(leaveTimer.current);
     leaveTimer.current = requestAnimationFrame(() => {
@@ -609,8 +621,6 @@ const leaveTimer = useRef(null);
       setHover(null);
     });
   };
-  const onCellLeave = () => setHover(null);
-  const onCellClickInternal = (s, c) => {
     if (onCellClick) onCellClick(s.i, c.i);
     else { onPickSku(s.i); }
   };
