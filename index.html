@@ -118,9 +118,12 @@
   table.dt tbody tr.selected { background: #d1fae5 !important; outline: 1px solid var(--em-500); outline-offset: -1px; }
   table.dt td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); font-size: 11px; color: var(--ink-800); }
 
-  /* Heatmap cells */
-  .hm-cell { transition: outline .08s ease, transform .08s ease; }
-  .hm-cell:hover { outline: 2px solid var(--ink-900); outline-offset: -1px; z-index: 3; position: relative; transform: scale(1.4); }
+  /* Heatmap cells — hover highlight is non-layout (outline + box-shadow only).
+     Do NOT use transform/scale here: it changes the cell's bounding box and
+     causes a mouseenter/mouseleave oscillation as the cell pops out from
+     under the cursor. */
+  .hm-cell { transition: box-shadow .08s ease, outline-color .08s ease; }
+  .hm-cell:hover { outline: 2px solid var(--ink-900); outline-offset: -1px; box-shadow: 0 0 0 1px rgba(11,18,32,.4); z-index: 3; }
 
   /* Drawer animations */
   @keyframes drawerIn { from { transform: translateX(20px); opacity: .4; } to { transform: translateX(0); opacity: 1; } }

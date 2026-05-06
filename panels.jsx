@@ -4,7 +4,7 @@ const { fmt$, fmt$d, fmtN, fmtPct, fmtNum, parseLastOrder } = window.BambooCore;
 const { Tag, TagChips, MiniBar, ScoreBar, Sparkline, Th, EmptyState } = window.BambooUI;
 
 // ============================================================
-//   DRAWER â shared overlay shell with backdrop blur + animation
+//   DRAWER — shared overlay shell with backdrop blur + animation
 // ============================================================
 function Drawer({onClose, width=820, children}) {
   useEffect(() => {
@@ -80,7 +80,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
   }, [nonCarriers, nonCarrySort]);
 
   const totalOpp = nonCarriers.reduce((s, x) => s + x.est, 0);
-  const highValMissing = nonCarriers.filter(x => x.client.storeTag === 'HIGH VALUE â CALL NOW' || x.client.oppScore >= 70);
+  const highValMissing = nonCarriers.filter(x => x.client.storeTag === 'HIGH VALUE — CALL NOW' || x.client.oppScore >= 70);
   const highValOpp = highValMissing.reduce((s, x) => s + x.est, 0);
 
   const togglePipeline = (cid) => {
@@ -103,19 +103,19 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
       <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3.5 flex items-start gap-3 z-10">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-mono text-slate-500 small-caps">sku #{sku.rank} Â· {sku.c}</span>
+            <span className="text-[10px] font-mono text-slate-500 small-caps">sku #{sku.rank} · {sku.c}</span>
             <Tag tag={sku.tag} />
             <span className="text-[10px] font-mono text-slate-400">percentile {fmtPct(sku.percentile,0)}</span>
           </div>
           <h2 className="font-display text-[20px] font-semibold tracking-tight leading-tight">{sku.n}</h2>
           <p className="text-[12px] text-slate-600 mt-1.5 leading-snug">
             Carried in <b className="text-slate-900">{sku.stores}</b> of <b>{a.clients.length}</b> stores ({fmtPct(sku.distPct,0)}).
-            <b className="text-rose-700 ml-1">{sku.distGap} missing</b> Â·
+            <b className="text-rose-700 ml-1">{sku.distGap} missing</b> ·
             <b className="text-emerald-700 ml-1">{highValMissing.length} high-value missing</b> stores worth
             <b className="text-emerald-700 ml-1">{fmt$(highValOpp)}</b> in projected revenue.
           </p>
         </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl leading-none -mt-1" aria-label="Close">Ã</button>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl leading-none -mt-1" aria-label="Close">×</button>
       </div>
 
       <div className="px-5 py-3 grid grid-cols-6 gap-2 text-[11px] border-b border-slate-200 bg-slate-50">
@@ -134,14 +134,14 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
       </div>
 
       <div className="px-5 py-3 border-b border-slate-200" style={{background: 'linear-gradient(to right, rgba(16,185,129,.06), white)'}}>
-        <div className="text-[10px] uppercase tracking-wider text-emerald-700 mb-1 small-caps font-semibold">Suggested action â {action.label}</div>
+        <div className="text-[10px] uppercase tracking-wider text-emerald-700 mb-1 small-caps font-semibold">Suggested action — {action.label}</div>
         <div className="text-[13px] text-slate-800 leading-snug">{action.text}</div>
       </div>
 
       {pipelineIds.size > 0 && (
         <div className="px-5 py-2.5 border-b border-slate-200 bg-emerald-50 flex items-center gap-3 sticky" style={{top: 84, zIndex: 8}}>
           <span className="text-[12px] text-emerald-900"><b>{pipelineIds.size}</b> store{pipelineIds.size===1?'':'s'} added to call-sheet pipeline</span>
-          <button onClick={exportPipeline} className="btn btn-emerald ml-auto">ð Export call sheet</button>
+          <button onClick={exportPipeline} className="btn btn-emerald ml-auto">📄 Export call sheet</button>
           <button onClick={() => setPipelineIds(new Set())} className="btn btn-ghost">clear</button>
         </div>
       )}
@@ -202,7 +202,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
                   <td className="text-right tabular-nums font-mono" onClick={() => onPickClient(client.i)}>{client.oppScore.toFixed(0)}</td>
                   <td className="text-right tabular-nums font-mono text-slate-500" onClick={() => onPickClient(client.i)}>{fmt$(client.rev)}</td>
                   <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold" onClick={() => onPickClient(client.i)}>{fmt$(est)}</td>
-                  <td className="truncate max-w-[110px] text-slate-500" onClick={() => onPickClient(client.i)}>{client.sr || 'â'}</td>
+                  <td className="truncate max-w-[110px] text-slate-500" onClick={() => onPickClient(client.i)}>{client.sr || '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -225,7 +225,7 @@ function Stat({l, v, sub, accent, accentColor, bar}) {
 }
 
 // ============================================================
-//   RETAILER DETAIL â STORE OPPORTUNITY DRAWER (centerpiece)
+//   RETAILER DETAIL — STORE OPPORTUNITY DRAWER (centerpiece)
 // ============================================================
 function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
   const cl = a.clients[clientId];
@@ -252,7 +252,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
     return arr;
   }, [carrying, carrySort]);
 
-  // Missing â every top SKU not carried, plus all top-revenue SKUs
+  // Missing — every top SKU not carried, plus all top-revenue SKUs
   const missing = useMemo(() => {
     const carriedSet = new Set(carrying.map(x => x.sku.i));
     const avgRevPerStore = a.meta.totalRevenue / a.clients.length;
@@ -321,19 +321,19 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <Tag tag={cl.storeTag} size="lg" />
-            <span className="text-[11px] font-mono text-slate-500">License {cl.lic || 'â'}</span>
-            {days < 999 && <span className="text-[11px] font-mono text-slate-500">Â· last order {days}d ago</span>}
-            <span className="text-[11px] font-mono text-slate-500">Â· opp score {cl.oppScore.toFixed(0)}</span>
+            <span className="text-[11px] font-mono text-slate-500">License {cl.lic || '—'}</span>
+            {days < 999 && <span className="text-[11px] font-mono text-slate-500">· last order {days}d ago</span>}
+            <span className="text-[11px] font-mono text-slate-500">· opp score {cl.oppScore.toFixed(0)}</span>
           </div>
           <h2 className="font-display text-[22px] font-semibold tracking-tight leading-tight">{cl.n}</h2>
           <div className="text-[12px] text-slate-600 mt-1 grid grid-cols-3 gap-x-4">
-            <span>Sales: <b className="text-slate-900">{cl.sr || 'â'}</b></span>
-            <span>VMI: <b className="text-slate-900">{cl.vr || 'â'}</b></span>
-            <span>Pricing: <b className="text-slate-900 truncate">{cl.pg || 'â'}</b></span>
+            <span>Sales: <b className="text-slate-900">{cl.sr || '—'}</b></span>
+            <span>VMI: <b className="text-slate-900">{cl.vr || '—'}</b></span>
+            <span>Pricing: <b className="text-slate-900 truncate">{cl.pg || '—'}</b></span>
           </div>
         </div>
-        <button onClick={() => onExportCallSheet([cl.i])} className="btn btn-emerald">ð Call sheet</button>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl leading-none" aria-label="Close">Ã</button>
+        <button onClick={() => onExportCallSheet([cl.i])} className="btn btn-emerald">📄 Call sheet</button>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl leading-none" aria-label="Close">×</button>
       </div>
 
       {/* Performance block */}
@@ -345,17 +345,17 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
         <Stat l="AOV" v={fmt$(cl.aov)} sub={`${fmtN(cl.avgOrderUnits)} u/order`} />
         <Stat l="SKUs" v={`${cl.skusCarried}/${cl.skusAll}`} sub={fmtPct(cl.skuPenetration,0)+' penetration'} />
         <Stat l="Categories" v={`${cl.catCount} of ${a.cats.length}`} />
-        <Stat l="Last order" v={cl.ls || 'â'} sub={days < 999 ? `${days}d ago` : 'â'} />
+        <Stat l="Last order" v={cl.ls || '—'} sub={days < 999 ? `${days}d ago` : '—'} />
         <Stat l="Missing top 30" v={cl.missingTopCount} accentColor="text-rose-700" />
         <Stat l="Missed $" v={fmt$(cl.missedRev)} accentColor="text-emerald-700" />
         <Stat l="Bundle lift (top 10)" v={fmt$(bundleLift)} accentColor="text-emerald-700" />
-        <Stat l="Tenure" v={cl.tenureDays != null ? Math.round(cl.tenureDays/365*10)/10+' yr' : 'â'} />
+        <Stat l="Tenure" v={cl.tenureDays != null ? Math.round(cl.tenureDays/365*10)/10+' yr' : '—'} />
       </div>
 
       {/* Category gap chart */}
       <div className="px-5 py-3 border-b border-slate-200">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[10px] uppercase tracking-wider text-slate-600 font-semibold small-caps">Category Coverage <span className="text-slate-400 normal-case">â this store vs global avg</span></h3>
+          <h3 className="text-[10px] uppercase tracking-wider text-slate-600 font-semibold small-caps">Category Coverage <span className="text-slate-400 normal-case">— this store vs global avg</span></h3>
           <div className="flex items-center gap-3 text-[10px] text-slate-500 font-mono">
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{background:'#0b1220'}}></span>this store</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm border border-slate-300 bg-slate-100"></span>global avg</span>
@@ -369,7 +369,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
             const under = cs.underIndex;
             return (
               <div key={c} className="grid items-center gap-3 text-[11px]" style={{gridTemplateColumns:'130px 1fr 80px 80px 80px'}}>
-                <div className={`truncate ${under ? 'text-rose-700 font-semibold' : 'text-slate-700'}`}>{c}{under && ' â²'}</div>
+                <div className={`truncate ${under ? 'text-rose-700 font-semibold' : 'text-slate-700'}`}>{c}{under && ' ▲'}</div>
                 <div className="relative h-4 rounded bg-slate-100 overflow-hidden">
                   <div className="absolute inset-y-0 border-r border-slate-300" style={{left: (global*100)+'%', borderRightStyle: 'dashed'}}></div>
                   <div className="absolute inset-y-0 left-0 transition-all" style={{width: (here*100)+'%', background: under ? 'linear-gradient(90deg,#fda4af,#dc2626)' : 'linear-gradient(90deg,#1f2937,#0b1220)'}}></div>
@@ -383,13 +383,13 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
         </div>
       </div>
 
-      {/* Missing Top SKUs â centerpiece */}
+      {/* Missing Top SKUs — centerpiece */}
       <div className="border-b border-slate-200">
         <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between sticky" style={{top: 0, zIndex: 6}}>
           <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">Missing Top SKUs <span className="text-slate-500 normal-case">({sortedMissing.length} ranked, by global score)</span></h3>
           <div className="flex items-center gap-2">
             {bundleIds.size > 0 && <span className="text-[11px] text-emerald-700 font-mono">{bundleIds.size} selected</span>}
-            <button disabled={bundleIds.size === 0} onClick={() => onExportCallSheet([cl.i], [...bundleIds])} className="btn btn-emerald">â Add to call sheet</button>
+            <button disabled={bundleIds.size === 0} onClick={() => onExportCallSheet([cl.i], [...bundleIds])} className="btn btn-emerald">→ Add to call sheet</button>
           </div>
         </div>
         <div className="max-h-[420px] overflow-auto">
@@ -420,7 +420,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
                   <td className="text-right tabular-nums font-mono">{fmt$(sku.revPerStore)}</td>
                   <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(est)}</td>
                   <td className="text-right tabular-nums font-mono">{suggestedUnits}</td>
-                  <td><button onClick={() => onPickSku(sku.i)} className="text-[10px] text-slate-400 hover:text-emerald-700">view â</button></td>
+                  <td><button onClick={() => onPickSku(sku.i)} className="text-[10px] text-slate-400 hover:text-emerald-700">view →</button></td>
                 </tr>
               ))}
             </tbody>
@@ -433,14 +433,14 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
         <div className="px-5 py-2.5 border-b border-slate-200">
           <h3 className="text-[11px] uppercase tracking-wider text-emerald-800 font-semibold small-caps flex items-center gap-2">
             Suggested order bundle
-            <span className="text-slate-400 normal-case font-normal">â top 10 missing</span>
+            <span className="text-slate-400 normal-case font-normal">— top 10 missing</span>
             <span className="ml-auto text-emerald-700 font-mono text-[12px]">potential lift {fmt$(bundleLift)}</span>
           </h3>
         </div>
         <div className="px-5 py-3">
           <pre className="text-[11px] text-slate-700 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50 border border-slate-200 rounded p-3 select-all">
 {bundle.map((b,i) => `${(i+1).toString().padStart(2)}. ${b.sku.n.padEnd(38).slice(0,38)}  ${(b.suggestedUnits+'u').padStart(6)}  ~ ${fmt$(b.est).padStart(8)}`).join('\n')}
-{`\n${'â'.repeat(70)}\nTotal projected lift                           ${fmt$(bundleLift).padStart(12)}`}
+{`\n${'─'.repeat(70)}\nTotal projected lift                           ${fmt$(bundleLift).padStart(12)}`}
           </pre>
         </div>
       </div>
@@ -481,7 +481,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
 }
 
 // ============================================================
-//   DISTRIBUTION MATRIX â virtualized SKU Ã retailer grid
+//   DISTRIBUTION MATRIX — virtualized SKU × retailer grid
 // ============================================================
 function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
   const [skuSort, setSkuSort] = useState('rev');     // 'rev'|'name'|'score'|'stores'
@@ -495,7 +495,11 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
   const [hideCarrying, setHideCarrying] = useState(false);
   const [density, setDensity] = useState('comfortable'); // 'compact'|'comfortable'
   const [fullscreen, setFullscreen] = useState(false);
-  const [hover, setHover] = useState(null); // {sx, cx, ev} for tooltip
+  // Tooltip is managed imperatively (refs + direct DOM writes) to avoid
+  // re-rendering the entire grid on every mouseenter — that re-render was
+  // causing cells to unmount/remount and producing a hover-flicker loop.
+  const tooltipRef = useRef(null);
+  const lastHoverRef = useRef(null);
 
   const cellW = density === 'compact' ? 14 : 22;
   const cellH = density === 'compact' ? 14 : 22;
@@ -556,13 +560,13 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
     return m;
   }, [skus, lookup]);
 
-  // Optionally hide stores carrying every visible SKU (rare; leave as no-op-ish â instead apply at row level: show only stores with at least one missing SKU among visible)
+  // Optionally hide stores carrying every visible SKU (rare; leave as no-op-ish — instead apply at row level: show only stores with at least one missing SKU among visible)
   const filteredClients = useMemo(() => {
     if (!hideCarrying) return clients;
     return clients.filter(c => skus.some(s => !lookup.get(s.i)?.has(c.i) || !(lookup.get(s.i).get(c.i)?.r > 0)));
   }, [clients, skus, lookup, hideCarrying]);
 
-  // Virtualization â track scroll
+  // Virtualization — track scroll
   const scrollerRef = useRef(null);
   const [scroll, setScroll] = useState({x: 0, y: 0, w: 0, h: 0});
 
@@ -590,25 +594,46 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
 
   const cats = ['All', ...[...new Set(a.skus.map(s => s.c))].sort()];
   const reps = ['All', ...[...new Set(a.clients.map(c => c.sr || 'Unassigned'))].sort()];
-  const leaveTimer = useRef(null);
-  const onCellEnter = (sx, cx, ev) => {
-    if (leaveTimer.current) {
-      cancelAnimationFrame(leaveTimer.current);
-      leaveTimer.current = null;
-    }
-    const r = ev.currentTarget.getBoundingClientRect();
-    setHover(prev => {
-      if (prev && prev.sx === sx && prev.cx === cx) return prev;
-      return {sx, cx, x: r.right + 6, y: r.top};
-    });
-  };
-  const onCellLeave = () => {
-    if (leaveTimer.current) cancelAnimationFrame(leaveTimer.current);
-    leaveTimer.current = requestAnimationFrame(() => {
-      leaveTimer.current = null;
-      setHover(null);
-    });
-  };
+
+  const onCellEnter = useCallback((sx, cx, ev) => {
+    // Avoid re-firing if we're already showing this exact cell
+    if (lastHoverRef.current && lastHoverRef.current.sx === sx && lastHoverRef.current.cx === cx) return;
+    lastHoverRef.current = { sx, cx };
+    const tip = tooltipRef.current;
+    if (!tip) return;
+    const sku = a.skuById.get(sx);
+    const client = a.clients[cx];
+    if (!sku || !client) return;
+    const cell = lookup.get(sx)?.get(cx);
+    const r = cell?.r || 0;
+    const u = cell?.u || 0;
+    const pct = client.rev ? r / client.rev : 0;
+    const carrying = r > 0;
+    const rect = ev.currentTarget.getBoundingClientRect();
+    const x = Math.min(window.innerWidth - 270, rect.right + 6);
+    const y = Math.min(window.innerHeight - 130, rect.top);
+    // Body
+    const bodyHTML = carrying
+      ? `<div>revenue: <span style="color:#6ee7b7;font-weight:600">${fmt$(r)}</span></div>`
+      + `<div>units: ${fmtN(u)}</div>`
+      + `<div>${fmtPct(pct,1)} of this store's spend</div>`
+      : `<div style="color:#fda4af;font-weight:600">not carrying — opportunity</div>`;
+    tip.innerHTML =
+      `<div style="font-weight:600;color:#6ee7b7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(sku.n)}</div>`
+      + `<div style="color:#cbd5e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">× ${escapeHtml(client.n)}</div>`
+      + `<div style="height:1px;background:#475569;margin:6px 0"></div>`
+      + bodyHTML;
+    tip.style.transform = `translate(${x}px, ${y}px)`;
+    tip.style.opacity = '1';
+    tip.style.visibility = 'visible';
+  }, [a, lookup]);
+  const onCellLeave = useCallback(() => {
+    lastHoverRef.current = null;
+    const tip = tooltipRef.current;
+    if (!tip) return;
+    tip.style.opacity = '0';
+    tip.style.visibility = 'hidden';
+  }, []);
   const onCellClickInternal = (s, c) => {
     if (onCellClick) onCellClick(s.i, c.i);
     else { onPickSku(s.i); }
@@ -621,9 +646,9 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
       {/* Filters */}
       <div className="px-3 py-2 border-b border-slate-200 bg-white space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <input type="search" placeholder="Search SKUsâ¦" value={skuSearch} onChange={e => setSkuSearch(e.target.value)}
+          <input type="search" placeholder="Search SKUs…" value={skuSearch} onChange={e => setSkuSearch(e.target.value)}
                  className="text-xs" style={{width:160}} />
-          <input type="search" placeholder="Search retailersâ¦" value={storeSearch} onChange={e => setStoreSearch(e.target.value)}
+          <input type="search" placeholder="Search retailers…" value={storeSearch} onChange={e => setStoreSearch(e.target.value)}
                  className="text-xs" style={{width:160}} />
           <span className="h-5 w-px bg-slate-200 mx-1"></span>
           <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="text-xs">
@@ -634,14 +659,14 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
           </select>
           <span className="h-5 w-px bg-slate-200 mx-1"></span>
           <select value={skuSort} onChange={e => setSkuSort(e.target.value)} className="text-xs">
-            <option value="rev">SKUs: revenue â</option>
-            <option value="score">SKUs: score â</option>
-            <option value="stores">SKUs: store count â</option>
+            <option value="rev">SKUs: revenue ↓</option>
+            <option value="score">SKUs: score ↓</option>
+            <option value="stores">SKUs: store count ↓</option>
             <option value="name">SKUs: name A-Z</option>
           </select>
           <select value={storeSort} onChange={e => setStoreSort(e.target.value)} className="text-xs">
-            <option value="rev">Stores: revenue â</option>
-            <option value="opp">Stores: opp score â</option>
+            <option value="rev">Stores: revenue ↓</option>
+            <option value="opp">Stores: opp score ↓</option>
             <option value="name">Stores: name A-Z</option>
             <option value="rep">Stores: by rep</option>
           </select>
@@ -656,7 +681,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
               <button onClick={() => setDensity('comfortable')} className={`px-2 py-0.5 rounded ${density==='comfortable'?'bg-white shadow-sm text-slate-900':'text-slate-500'}`}>Comfortable</button>
             </div>
             <button onClick={() => setFullscreen(!fullscreen)} className="btn btn-ghost" title={fullscreen?'Exit fullscreen':'Fullscreen'}>
-              {fullscreen ? 'â¤¢ exit' : 'â¤¢ expand'}
+              {fullscreen ? '⤢ exit' : '⤢ expand'}
             </button>
           </div>
         </div>
@@ -665,16 +690,16 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
           <TagChips options={['All','SCALE','PUSH','MONITOR','FIX','CUT']} value={skuTagFilter} onChange={setSkuTagFilter} />
           <span className="h-4 w-px bg-slate-200 mx-1"></span>
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Store tag</span>
-          <TagChips options={['All','HIGH VALUE â CALL NOW','CROSS-SELL','CATEGORY EXPANSION','LOW PRIORITY','AT RISK']} value={storeTagFilter} onChange={setStoreTagFilter} />
+          <TagChips options={['All','HIGH VALUE — CALL NOW','CROSS-SELL','CATEGORY EXPANSION','LOW PRIORITY','AT RISK']} value={storeTagFilter} onChange={setStoreTagFilter} />
         </div>
         <div className="flex items-center gap-3 text-[10px] text-slate-500 font-mono">
-          <span>{skus.length} SKUs Ã {filteredClients.length} stores Â· {(skus.length * filteredClients.length).toLocaleString()} cells</span>
+          <span>{skus.length} SKUs × {filteredClients.length} stores · {(skus.length * filteredClients.length).toLocaleString()} cells</span>
           <span className="ml-auto flex items-center gap-1.5">
             <span>0</span>
             <span className="inline-block h-3 w-32 rounded-sm" style={{background: 'linear-gradient(90deg, #f1f5f9, #d1fae5 30%, #34d399 60%, #047857)'}}></span>
             <span>row max $</span>
           </span>
-          <span className="text-slate-400">Â· hover for details Â· click for SKU detail</span>
+          <span className="text-slate-400">· hover for details · click for SKU detail</span>
         </div>
       </div>
 
@@ -684,7 +709,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
           {/* Sticky header row (column headers) */}
           <div style={{position: 'sticky', top: 0, zIndex: 6, height: headerH, background: 'white', borderBottom: '1px solid #e5e7eb', width: totalW}}>
             <div style={{position: 'sticky', left: 0, top: 0, width: skuColW, height: headerH, background: 'white', borderRight: '1px solid #e5e7eb', zIndex: 8, display:'flex', alignItems:'flex-end', padding: '0 10px 8px'}}>
-              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold small-caps">SKU â / Retailer â</div>
+              <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold small-caps">SKU ↓ / Retailer →</div>
             </div>
             {filteredClients.slice(startCol, endCol).map((c, idx) => {
               const i = startCol + idx;
@@ -694,7 +719,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
                   <div className="absolute origin-bottom-left whitespace-nowrap" style={{transform: 'rotate(-65deg)', bottom: 6, left: cellW - 2, width: headerH - 12, fontSize: 9, color: '#475569', fontFamily: 'JetBrains Mono'}}>
                     <span className="font-semibold">{c.n}</span>
                     <span className="ml-1 text-emerald-700">{fmt$(c.rev/1000).replace('$','$')+'k'}</span>
-                    <span className="ml-1 text-slate-400">{c.sr ? c.sr.split(' ').map(p=>p[0]).join('').slice(0,2) : 'â'}</span>
+                    <span className="ml-1 text-slate-400">{c.sr ? c.sr.split(' ').map(p=>p[0]).join('').slice(0,2) : '–'}</span>
                   </div>
                 </div>
               );
@@ -732,7 +757,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
                     );
                   }
                   const intensity = Math.min(1, cell.r / mxr);
-                  // gradient: light â emerald
+                  // gradient: light → emerald
                   const r = Math.round(241 - 234 * intensity);
                   const g = Math.round(245 - 125 * intensity);
                   const b = Math.round(249 - 162 * intensity);
@@ -744,7 +769,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
                          onMouseEnter={(e) => onCellEnter(s.i, c.i, e)}
                          onMouseLeave={onCellLeave}
                          onClick={() => onCellClickInternal(s, c)}>
-                      {showCheck ? 'â' : ''}
+                      {showCheck ? '✔' : ''}
                     </div>
                   );
                 })}
@@ -753,38 +778,25 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
           })}
         </div>
 
-        {/* Tooltip */}
-        {hover && (() => {
-          const sku = a.skuById.get(hover.sx);
-          const client = a.clients[hover.cx];
-          const cell = lookup.get(hover.sx)?.get(hover.cx);
-          if (!sku || !client) return null;
-          const r = cell?.r || 0;
-          const u = cell?.u || 0;
-          const pct = client.rev ? r / client.rev : 0;
-          const carrying = r > 0;
-          const x = Math.min(window.innerWidth - 270, hover.x);
-          const y = Math.min(window.innerHeight - 130, hover.y);
-          return (
-            <div className="fixed z-50 pointer-events-none rounded-md shadow-xl border border-slate-700 text-white text-[11px] font-mono p-2.5 leading-snug ink-grad" style={{left: x, top: y, width: 260}}>
-              <div className="font-semibold text-emerald-300 truncate">{sku.n}</div>
-              <div className="text-slate-300 truncate">Ã {client.n}</div>
-              <div className="h-px bg-slate-600 my-1.5"></div>
-              {carrying ? (
-                <>
-                  <div>revenue: <span className="text-emerald-300 font-semibold">{fmt$(r)}</span></div>
-                  <div>units: {fmtN(u)}</div>
-                  <div>{fmtPct(pct, 1)} of this store's spend</div>
-                </>
-              ) : (
-                <div className="text-rose-300 font-semibold">not carrying â opportunity</div>
-              )}
-            </div>
-          );
-        })()}
+        {/* Tooltip — single always-mounted node, updated imperatively to avoid grid re-renders */}
+        <div
+          ref={tooltipRef}
+          className="rounded-md shadow-xl border border-slate-700 text-white text-[11px] font-mono p-2.5 leading-snug ink-grad"
+          style={{
+            position: 'fixed', left: 0, top: 0, width: 260, zIndex: 50,
+            pointerEvents: 'none', visibility: 'hidden', opacity: 0,
+            transition: 'opacity 80ms linear',
+            willChange: 'transform',
+          }}
+          aria-hidden="true"
+        ></div>
       </div>
     </div>
   );
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 // ============================================================
@@ -825,7 +837,7 @@ function Buckets({a, onPickSku}) {
       <Bucket title="Top revenue drivers" sub="$ contribution" items={top10Rev} getter={s => fmt$(s.rev)} color="#059669" />
       <Bucket title="Highest velocity" sub="units/store/month" items={top10Vel} getter={s => fmtNum(s.velocity, 0)} color="#0b1220" />
       <Bucket title="Most distributed" sub="store count" items={top10Dist} getter={s => `${s.stores}/${a.clients.length}`} color="#2563eb" />
-      <Bucket title="Hidden winners" sub="high vel Â· low dist" items={hidden} getter={s => `${fmtNum(s.velocity, 0)} Â· ${fmtPct(s.distPct,0)}`} color="#d97706" />
+      <Bucket title="Hidden winners" sub="high vel · low dist" items={hidden} getter={s => `${fmtNum(s.velocity, 0)} · ${fmtPct(s.distPct,0)}`} color="#d97706" />
       <Bucket title="Weak SKUs" sub="lowest score" items={weak} getter={s => `score ${s.score.toFixed(0)}`} color="#dc2626" />
     </div>
   );
