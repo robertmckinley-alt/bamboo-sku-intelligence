@@ -23,19 +23,25 @@ function buildCallSheetData(a, clientIds) {
 function exportCallSheetCSV(a, clientIds) {
   const data = buildCallSheetData(a, clientIds);
   const csv = [];
-  csv.push(['Retailer','Sales Rep','VMI Rep','License','Pricing','Last Order','Tag','Opp Score','Revenue','Units','Orders','AOV','SKUs Carried','Missing Top 30','Est Missed Rev','TYPE','SKU','Rank','Revenue $','Units','Suggested Units','Talking Point'].join(','));
+  csv.push(['Retailer','Sales Rep','VMI Rep','License','Pricing','Last Order','Tag','Opp Score','Revenue','Units','Orders','AOV','SKUs Carried','Missing Top 30','Est Missed Rev','TYPE','SKU','Top Products','Rank','Revenue $','Units','Suggested Units','Talking Point'].join(','));
   for (const row of data) {
     const cl = row.client;
     const base = [cl.n, cl.sr||'', cl.vr||'', cl.lic||'', cl.pg||'', cl.ls||'', cl.storeTag, cl.oppScore.toFixed(0), cl.rev, cl.u, cl.o, cl.aov, `${cl.skusCarried}/${cl.skusAll}`, cl.missingTopCount, cl.missedRev.toFixed(0)];
     if (row.topCarrying.length === 0 && row.missing.length === 0) {
-      csv.push([...base, 'NO DATA','','','','','','No active sales in period.'].map(csvEscape).join(','));
+      csv.push([...base, 'NO DATA','','','','','','','No active sales in period.'].map(csvEscape).join(','));
     }
     for (const c of row.topCarrying) {
-      csv.push([...base, 'TOP_CARRYING', c.sku.n, c.sku.rank, c.r.toFixed(2), c.u, '', `Performing well — keep stocked.`].map(csvEscape).join(','));
+      csv.push([...base, 'TOP_CARRYING', c.sku.n, '', c.sku.rank, c.r.toFixed(2), c.u, '', `Performing well — keep stocked.`].map(csvEscape).join(','));
     }
     for (const m of row.missing) {
       const sku = a.skuById.get(m.sid);
-      csv.push([...base, 'MISSING_PITCH', m.name, m.rank, m.est.toFixed(0), '', m.suggestedUnits, `Top ${m.rank} globally; not yet placed. Est $${Math.round(m.est)} headroom.`].map(csvEscape).join(','));
+      const tops = (a.products || [])
+        .filter(p => p.sg === m.sid)
+        .sort((x, y) => y.rev - x.rev)
+        .slice(0, 3)
+        .map(p => p.b ? `${p.n} (${p.b})` : p.n)
+        .join(' | ');
+      csv.push([...base, 'MISSING_PITCH', m.name, tops, m.rank, m.est.toFixed(0), '', m.suggestedUnits, `Top ${m.rank} globally; not yet placed. Est $${Math.round(m.est)} headroom.`].map(csvEscape).join(','));
     }
   }
   const blob = new Blob([csv.join('\n')], {type:'text/csv;charset=utf-8'});
@@ -133,12 +139,18 @@ function sheetHtml(row, a) {
 
     <h2>Top SKUs to Pitch</h2>
     <table>
-      <thead><tr><th>#</th><th>SKU</th><th>Category</th><th class="num">Global Rank</th><th class="num">Est. Revenue</th><th class="num">Suggested Qty</th></tr></thead>
+      <thead><tr><th>#</th><th>SKU Group</th><th>Top Individual Products</th><th>Category</th><th class="num">Global Rank</th><th class="num">Est. Revenue</th><th class="num">Suggested Qty</th></tr></thead>
       <tbody>
         ${row.missing.map((m, i) => {
           const sku = a.skuById.get(m.sid);
-          return `<tr><td>${i+1}</td><td>${escHtml(m.name)}</td><td>${escHtml(sku?.c||'')}</td><td class="num">#${m.rank}</td><td class="num">${fmt$(m.est)}</td><td class="num">${m.suggestedUnits}</td></tr>`;
-        }).join('') || `<tr><td colspan="6" style="color:#78716c;">No high-rank gaps — store is well-distributed.</td></tr>`}
+          const topProducts = (a.products || [])
+            .filter(p => p.sg === m.sid)
+            .sort((x, y) => y.rev - x.rev)
+            .slice(0, 3)
+            .map(p => p.b ? `${p.n} <span style="color:#a8a29e">(${escHtml(p.b)})</span>` : escHtml(p.n))
+            .join('<br/>');
+          return `<tr><td>${i+1}</td><td>${escHtml(m.name)}</td><td style="font-size:8.5pt; color:#44403c;">${topProducts || '<span style="color:#a8a29e">—</span>'}</td><td>${escHtml(sku?.c||'')}</td><td class="num">#${m.rank}</td><td class="num">${fmt$(m.est)}</td><td class="num">${m.suggestedUnits}</td></tr>`;
+        }).join('') || `<tr><td colspan="7" style="color:#78716c;">No high-rank gaps — store is well-distributed.</td></tr>`}
       </tbody>
     </table>
 

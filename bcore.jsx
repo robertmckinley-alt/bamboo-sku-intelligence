@@ -44,7 +44,7 @@ function normalize(arr, getter) {
 }
 
 function buildAnalytics(data, skuWeights, storeWeights) {
-  const { clients, skus, matrix, meta } = data;
+  const { clients, skus, matrix, meta, products } = data;
   const months = meta.months;
   const totalStores = clients.length;
 
@@ -261,6 +261,7 @@ function buildAnalytics(data, skuWeights, storeWeights) {
     meta,
     top30,
     matrixRaw: matrix,
+    products: products || [],
   };
 }
 

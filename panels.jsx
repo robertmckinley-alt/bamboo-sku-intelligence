@@ -208,8 +208,76 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
             </tbody>
           </table>
         </div>
+
+        {/* ============== Individual Products in this SKU group ============== */}
+        <SkuProductsSection a={a} sku={sku} />
       </div>
     </Drawer>
+  );
+}
+
+function SkuProductsSection({a, sku}) {
+  const products = useMemo(
+    () => (a.products || []).filter(p => p.sg === sku.i).sort((x, y) => y.rev - x.rev),
+    [a.products, sku.i]
+  );
+  const [expanded, setExpanded] = useState(false);
+  if (!products.length) return null;
+  const shown = expanded ? products : products.slice(0, 8);
+  const total = products.reduce((s, p) => s + p.rev, 0);
+  const top3Share = products.slice(0, 3).reduce((s, p) => s + p.rev, 0) / (total || 1);
+  return (
+    <div className="border-t border-slate-200 px-5 py-4">
+      <div className="flex items-baseline justify-between mb-2">
+        <h3 className="font-display text-[15px] font-semibold tracking-tight">
+          Individual Products <span className="text-slate-400 italic">— in this SKU group</span>
+        </h3>
+        <span className="text-[10px] font-mono text-slate-500 small-caps tabular-nums">
+          {products.length} products · top 3 = {fmtPct(top3Share, 0)} of group rev
+        </span>
+      </div>
+      <div className="border border-slate-200 rounded-md overflow-hidden">
+        <table className="dt">
+          <thead>
+            <tr>
+              <th className="text-right" style={{width: 36}}>#</th>
+              <th>Product</th>
+              <th>Brand</th>
+              <th className="text-right">Revenue</th>
+              <th className="text-right">Share</th>
+              <th className="text-right">Units</th>
+              <th className="text-right">Vel / mo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map(p => (
+              <tr key={p.i}>
+                <td className="text-right tabular-nums font-mono text-slate-500">{p.rkG}</td>
+                <td className="truncate max-w-[260px]" title={p.n}>{p.n}</td>
+                <td className="text-slate-600">{p.b || <span className="text-slate-300">—</span>}</td>
+                <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(p.rev)}</td>
+                <td className="text-right" style={{minWidth: 100}}>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-slate-100">
+                      <div className="h-full" style={{width: ((p.rev / (total||1)) * 100) + '%', background: 'linear-gradient(90deg,#34d399,#047857)'}}></div>
+                    </div>
+                    <span className="font-mono tabular-nums text-[10px] text-slate-600 w-8 text-right">{fmtPct(p.rev / (total||1), 1)}</span>
+                  </div>
+                </td>
+                <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
+                <td className="text-right tabular-nums font-mono text-slate-500">{fmtNum(p.vel, 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {products.length > 8 && (
+        <button onClick={() => setExpanded(e => !e)}
+                className="mt-2 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900">
+          {expanded ? '▴ Show top 8 only' : `▾ Show all ${products.length} products`}
+        </button>
+      )}
+    </div>
   );
 }
 

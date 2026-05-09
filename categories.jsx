@@ -1,7 +1,7 @@
 /* eslint-disable */
 const { useState, useMemo } = React;
 const { fmt$, fmtN, fmtPct, fmtNum } = window.BambooCore;
-const { Tag, ScoreBar, Sparkline } = window.BambooUI;
+const { Tag, TagChips, ScoreBar, Sparkline } = window.BambooUI;
 
 // Radial penetration ring
 function PenetrationRing({pct, size=64, label, sub, color='#059669'}) {
@@ -154,6 +154,160 @@ function CategoryLeaderboard({a, cat, onPickSku}) {
   );
 }
 
+
+// ============== Top Products by Category (individual SKU level) ==============
+// Drills below the SKU-group level. Source: data.products[] — individual products
+// from the Products Ordered file, mapped to SKU group + high-level category.
+function TopProductsByCategory({a, onPickSku}) {
+  const products = a.products || [];
+  const cats = useMemo(() => {
+    if (!products.length) return [];
+    const totals = {};
+    for (const p of products) totals[p.c] = (totals[p.c] || 0) + p.rev;
+    return Object.keys(totals).sort((x, y) => totals[y] - totals[x]);
+  }, [products]);
+
+  const [cat, setCat] = useState('All');
+  const [search, setSearch] = useState('');
+  const [brandFilter, setBrandFilter] = useState('All');
+  const [sort, setSort] = useState({key: 'rev', dir: 'desc'});
+  const [topN, setTopN] = useState(50);
+
+  const brandOptions = useMemo(() => {
+    const set = new Set(['All']);
+    for (const p of products) if (p.b) set.add(p.b);
+    return [...set].sort();
+  }, [products]);
+
+  const rows = useMemo(() => {
+    let arr = products.slice();
+    if (cat !== 'All') arr = arr.filter(p => p.c === cat);
+    if (brandFilter !== 'All') arr = arr.filter(p => p.b === brandFilter);
+    if (search) {
+      const q = search.toLowerCase();
+      arr = arr.filter(p => p.n.toLowerCase().includes(q) || (p.b||'').toLowerCase().includes(q));
+    }
+    const k = sort.key, m = sort.dir === 'asc' ? 1 : -1;
+    arr.sort((x, y) => {
+      const xv = x[k], yv = y[k];
+      if (typeof xv === 'string') return (xv||'').localeCompare(yv||'') * m;
+      return ((xv ?? 0) - (yv ?? 0)) * m;
+    });
+    return arr.slice(0, topN);
+  }, [products, cat, brandFilter, search, sort, topN]);
+
+  const catCounts = useMemo(() => {
+    const counts = {All: products.length};
+    for (const p of products) counts[p.c] = (counts[p.c] || 0) + 1;
+    return counts;
+  }, [products]);
+
+  const catTotals = useMemo(() => {
+    const t = {};
+    for (const p of products) {
+      if (!t[p.c]) t[p.c] = {rev: 0, u: 0, count: 0};
+      t[p.c].rev += p.rev; t[p.c].u += p.u; t[p.c].count += 1;
+    }
+    return t;
+  }, [products]);
+
+  const click = (k) => setSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}));
+  const Th = ({k, label, align='left', hint}) => (
+    <th className={`sortable ${align==='right'?'text-right':'text-left'}`} title={hint} onClick={() => click(k)}>
+      <span className="inline-flex items-center gap-1">{label}<span className="text-[8px] text-slate-300">{sort.key===k?(sort.dir==='asc'?'▲':'▼'):'▴▾'}</span></span>
+    </th>
+  );
+
+  if (!products.length) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-lg p-6 text-center text-[12px] text-slate-500">
+        No individual product data in dataset. Add <span className="font-mono">products[]</span> to data/dataset.json.
+      </div>
+    );
+  }
+
+  const maxRev = Math.max(1, ...rows.map(r => r.rev));
+  const totalShownRev = rows.reduce((s, r) => s + r.rev, 0);
+  const totalCatRev = cat === 'All' ? a.meta.totalRevenue : (catTotals[cat]?.rev || 1);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-baseline justify-between gap-3 flex-wrap">
+        <div>
+          <h3 className="font-display text-[16px] font-semibold tracking-tight">Top Performing SKUs <span className="text-slate-400 italic">— by product category</span></h3>
+          <div className="text-[10px] font-mono text-slate-500 small-caps">{products.length} individual products · click a row to open its SKU group</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <input id="prod-search" type="search" placeholder="Search product or brand…"
+                 value={search} onChange={e => setSearch(e.target.value)}
+                 className="w-56 text-[11px]" />
+          <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} className="text-[11px]">
+            {brandOptions.map(b => <option key={b} value={b}>{b === 'All' ? 'All brands' : b}</option>)}
+          </select>
+          <select value={topN} onChange={e => setTopN(parseInt(e.target.value))} className="text-[11px]">
+            {[25, 50, 100, 250, 1000].map(n => <option key={n} value={n}>Top {n}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="px-4 py-2 border-b border-slate-200 bg-white">
+        <TagChips
+          options={['All', ...cats]}
+          value={cat}
+          onChange={setCat}
+          counts={catCounts}
+        />
+      </div>
+      <div className="px-4 py-2 border-b border-slate-200 bg-slate-50 text-[10px] font-mono text-slate-500 tabular-nums flex items-center gap-4">
+        <span>Showing <b className="text-slate-700">{rows.length}</b> of {products.length}</span>
+        <span>Filter rev: <b className="text-slate-700">{fmt$(totalShownRev)}</b></span>
+        <span>{cat === 'All' ? 'Of total' : `Of ${cat}`}: <b className="text-emerald-700">{fmtPct(totalShownRev/totalCatRev, 1)}</b></span>
+      </div>
+      <div className="max-h-[560px] overflow-auto">
+        <table className="dt">
+          <thead>
+            <tr>
+              <Th k="rkC" label="#" align="right" hint="Rank within high-level category" />
+              <th className="text-left">Product</th>
+              <th className="text-left">Brand</th>
+              <th className="text-left">SKU Group</th>
+              <th className="text-left">Category</th>
+              <Th k="rev" label="Revenue" align="right" />
+              <th className="text-right" style={{width:120}}>Share</th>
+              <Th k="u" label="Units" align="right" />
+              <Th k="vel" label="Vel / mo" align="right" hint="Units per month" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(p => {
+              const groupName = a.skuById.get(p.sg)?.n || '—';
+              return (
+                <tr key={p.i} onClick={() => onPickSku(p.sg)} className="cursor-pointer">
+                  <td className="text-right tabular-nums font-mono text-slate-500">{p.rkC}</td>
+                  <td className="truncate max-w-[280px]" title={p.n}>{p.n}</td>
+                  <td className="text-slate-600">{p.b || <span className="text-slate-300">—</span>}</td>
+                  <td className="truncate max-w-[180px] text-slate-500" title={groupName}>{groupName}</td>
+                  <td><span className="pill" style={{background:'rgba(11,18,32,.04)', color:'#374151', borderColor:'#e5e7eb'}}>{p.c}</span></td>
+                  <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(p.rev)}</td>
+                  <td className="text-right" style={{minWidth:120}}>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-slate-100">
+                        <div className="h-full" style={{width: ((p.rev/maxRev)*100)+'%', background:'linear-gradient(90deg,#34d399,#047857)'}}></div>
+                      </div>
+                      <span className="font-mono tabular-nums text-[10px] text-slate-600 w-8 text-right">{fmtPct(p.rev/totalCatRev, 1)}</span>
+                    </div>
+                  </td>
+                  <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
+                  <td className="text-right tabular-nums font-mono text-slate-500">{fmtNum(p.vel, 0)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function CategoryLeaderboards({a, onPickSku}) {
   const cats = useMemo(() => {
     const arr = [...a.cats];
@@ -242,8 +396,16 @@ function CategoryLeaderboards({a, onPickSku}) {
           </table>
         </div>
       </div>
+
+      <div>
+        <div className="flex items-baseline justify-between mb-2">
+          <h2 className="font-display text-[18px] font-semibold tracking-tight">Top Performing Products <span className="italic text-emerald-700">— individual SKUs</span></h2>
+          <span className="text-[10px] font-mono text-slate-500 small-caps">{(a.products||[]).length} products · ranked within high-level category</span>
+        </div>
+        <TopProductsByCategory a={a} onPickSku={onPickSku} />
+      </div>
     </div>
   );
 }
 
-window.BambooCategories = { CategoryLeaderboards, CategoryCard, PenetrationRing };
+window.BambooCategories = { CategoryLeaderboards, CategoryCard, PenetrationRing, TopProductsByCategory };
