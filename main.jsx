@@ -14,7 +14,7 @@ function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('data/dataset.json')
+    fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
       .then(r => r.json())
       .then(setData)
       .catch(e => setError(String(e)));
