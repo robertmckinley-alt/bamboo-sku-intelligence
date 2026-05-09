@@ -205,7 +205,7 @@ function TopSkusPanel({a, onPickSku}) {
                 {rows.map((p, i) => {
                   const groupName = a.skuById.get(p.sg)?.n || '—';
                   return (
-                    <tr key={p.i} onClick={() => onPickSku(p.sg)} className="cursor-pointer"
+                    <tr key={p.i} onClick={() => onPickSku(p.sg, repFilter !== 'All' ? {repFilter, repType} : null)} className="cursor-pointer"
                         title={`Click → open ${groupName} drawer with non-carriers list`}>
                       <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                       <td className="truncate max-w-[280px]" title={p.n}>{p.n}</td>

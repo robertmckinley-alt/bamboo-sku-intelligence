@@ -35,6 +35,7 @@ function App() {
   const [pickedSku, setPickedSku] = useState(null);
   const [pickedClient, setPickedClient] = useState(null);
   const [pickedSkuFocusClient, setPickedSkuFocusClient] = useState(null);
+  const [pickedSkuRepContext, setPickedSkuRepContext] = useState(null);
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
 
   const analytics = useMemo(() => data ? buildAnalytics(data, skuW, storeW) : null, [data, skuW, storeW]);
@@ -116,12 +117,14 @@ function App() {
           )}
           {tab === 'topskus' && (
             <div className="overflow-auto h-full">
-              <TopSkusPanel a={analytics} onPickSku={setPickedSku} />
+              <TopSkusPanel a={analytics}
+                onPickSku={(skuId, ctx) => { setPickedSkuRepContext(ctx || null); setPickedSku(skuId); }} />
             </div>
           )}
           {tab === 'reps' && (
             <div className="overflow-auto h-full">
-              <RepsPanel a={analytics} onPickClient={setPickedClient} onPickSku={setPickedSku}
+              <RepsPanel a={analytics} onPickClient={setPickedClient}
+                onPickSku={(skuId, ctx) => { setPickedSkuRepContext(ctx || null); setPickedSku(skuId); }}
                 onExportRep={(rep, repType) => {
                   const field = repType === 'vr' ? 'vr' : 'sr';
                   const ids = analytics.clients.filter(c => (c[field]||'Unassigned') === rep).map(c => c.i);
@@ -153,8 +156,9 @@ function App() {
         <SkuDetail
           a={analytics} skuId={pickedSku}
           focusClientId={pickedSkuFocusClient}
-          onClose={() => { setPickedSku(null); setPickedSkuFocusClient(null); }}
-          onPickClient={(id) => { setPickedSku(null); setPickedSkuFocusClient(null); setPickedClient(id); }}
+          repContext={pickedSkuRepContext}
+          onClose={() => { setPickedSku(null); setPickedSkuFocusClient(null); setPickedSkuRepContext(null); }}
+          onPickClient={(id) => { setPickedSku(null); setPickedSkuFocusClient(null); setPickedSkuRepContext(null); setPickedClient(id); }}
           onAddCallSheet={(ids) => exportCallSheetPrintable(analytics, ids, [pickedSku])}
         />
       )}

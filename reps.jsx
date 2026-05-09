@@ -183,7 +183,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                 </thead>
                 <tbody>
                   {repBook.topSkus.slice(0, 25).map((row, i) => (
-                    <tr key={row.sku.i} onClick={() => onPickSku && onPickSku(row.sku.i)} className="cursor-pointer">
+                    <tr key={row.sku.i} onClick={() => onPickSku && onPickSku(row.sku.i, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
                       <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                       <td className="truncate max-w-[220px]" title={row.sku.n}>{row.sku.n}</td>
                       <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{row.sku.c}</span></td>
@@ -221,7 +221,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                     const groupName = a.skuById.get(p.sg)?.n || '—';
                     const carried = repBook.carrying.has(p.sg);
                     return (
-                      <tr key={p.i} onClick={() => onPickSku && onPickSku(p.sg)} className="cursor-pointer">
+                      <tr key={p.i} onClick={() => onPickSku && onPickSku(p.sg, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
                         <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                         <td className="truncate max-w-[220px]" title={p.n}>
                           {p.n}

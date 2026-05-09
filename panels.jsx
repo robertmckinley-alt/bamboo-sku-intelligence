@@ -29,17 +29,33 @@ function Drawer({onClose, width=820, children}) {
 // ============================================================
 //   SKU DETAIL PANEL
 // ============================================================
-function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClientId}) {
+function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClientId, repContext}) {
   const sku = a.skuById.get(skuId);
   const [nonCarrySort, setNonCarrySort] = useState({key: 'oppScore', dir: 'desc'});
   const [carrySort, setCarrySort] = useState({key: 'r', dir: 'desc'});
   const [pipelineIds, setPipelineIds] = useState(new Set());
+  // If a rep context was passed in (i.e. drawer opened from a rep-filtered view),
+  // scope the carriers / non-carriers tables to that rep's clients by default.
+  // The user can toggle off to see all stores.
+  const [scopeToRep, setScopeToRep] = useState(!!(repContext && repContext.repFilter && repContext.repFilter !== 'All'));
+  React.useEffect(() => {
+    setScopeToRep(!!(repContext && repContext.repFilter && repContext.repFilter !== 'All'));
+  }, [repContext?.repFilter, repContext?.repType, skuId]);
   if (!sku) return null;
 
+  // Helpers — derive the rep client set if the scope is active
+  const repClientSet = useMemo(() => {
+    if (!scopeToRep || !repContext || !repContext.repFilter || repContext.repFilter === 'All') return null;
+    const f = repContext.repType === 'vr' ? 'vr' : 'sr';
+    return new Set(a.clients.filter(c => (c[f] || 'Unassigned') === repContext.repFilter).map(c => c.i));
+  }, [scopeToRep, repContext, a.clients]);
+
   const carriers = useMemo(() => {
-    return (a.bySku.get(skuId) || []).filter(([c,r,u]) => r > 0)
+    let arr = (a.bySku.get(skuId) || []).filter(([c,r,u]) => r > 0)
       .map(([c,r,u]) => ({client: a.clients[c], r, u}));
-  }, [a, skuId]);
+    if (repClientSet) arr = arr.filter(x => repClientSet.has(x.client.i));
+    return arr;
+  }, [a, skuId, repClientSet]);
   const sortedCarriers = useMemo(() => {
     const arr = [...carriers];
     const k = carrySort.key;
@@ -53,9 +69,14 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
     return arr;
   }, [carriers, carrySort]);
 
-  const carriedSet = new Set(carriers.map(x => x.client.i));
+  // For non-carriers we need the FULL set of clients carrying this SKU (not just the
+  // rep-scoped subset of carriers above) — otherwise a rep's client that isn't carrying
+  // would appear as a "non-carrier" even when no one carries the SKU. We compute carriedSet
+  // from the unfiltered bySku map.
+  const carriedSet = useMemo(() => new Set(((a.bySku.get(skuId) || []).filter(([c,r,u]) => r > 0).map(([c]) => c))), [a, skuId]);
   const nonCarriers = useMemo(() => {
-    const list = a.clients.filter(c => !carriedSet.has(c.i));
+    let list = a.clients.filter(c => !carriedSet.has(c.i));
+    if (repClientSet) list = list.filter(c => repClientSet.has(c.i));
     const avgRevPerStore = a.meta.totalRevenue / a.clients.length;
     return list.map(c => {
       const sizeFactor = Math.min(2, Math.max(0.2, c.rev / Math.max(1, avgRevPerStore)));
@@ -64,7 +85,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
       const suggestedUnits = Math.round(sku.unitsPerStore * sizeFactor);
       return {client: c, est, suggestedUnits, adoption};
     });
-  }, [a, sku, carriedSet]);
+  }, [a, sku, carriedSet, repClientSet]);
 
   const sortedNonCarriers = useMemo(() => {
     const arr = [...nonCarriers];
@@ -114,6 +135,17 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
             <b className="text-emerald-700 ml-1">{highValMissing.length} high-value missing</b> stores worth
             <b className="text-emerald-700 ml-1">{fmt$(highValOpp)}</b> in projected revenue.
           </p>
+          {repContext && repContext.repFilter && repContext.repFilter !== 'All' && (
+            <div className="mt-2 inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-[11px]">
+              <span className="text-emerald-900">
+                Scoped to <b>{repContext.repFilter}</b>'s book ({repContext.repType === 'vr' ? 'VMI rep' : 'sales rep'}) — {repClientSet ? repClientSet.size : 0} stores
+              </span>
+              <button onClick={() => setScopeToRep(s => !s)}
+                      className="font-mono text-[10px] text-emerald-700 hover:text-emerald-900 underline decoration-dotted">
+                {scopeToRep ? 'show all stores' : 'show only this book'}
+              </button>
+            </div>
+          )}
         </div>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl leading-none -mt-1" aria-label="Close">×</button>
       </div>
@@ -601,7 +633,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
     }
     if (storeSort === 'rev') arr.sort((x,y) => y.rev - x.rev);
     else if (storeSort === 'name') arr.sort((x,y) => x.n.localeCompare(y.n));
-    else if (storeSort === 'rep') arr.sort((x,y) => (x.sr||'').localeCompare(y.sr||''));
+    else if (storeSort === 'rep') arr.sort((x,y) => (x[repType]||'').localeCompare(y[repType]||''));
     else if (storeSort === 'opp') arr.sort((x,y) => y.oppScore - x.oppScore);
     return arr;
   }, [a, storeTagFilter, repFilter, repType, storeSearch, storeSort]);
@@ -724,13 +756,14 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
           <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="text-xs">
             {cats.map(c => <option key={c} value={c}>{c === 'All' ? 'All categories' : c}</option>)}
           </select>
-          <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Rep</span>
+          <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold" title="Switch between Sales Rep and VMI Rep filtering">
             {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
               <button key={k} onClick={() => setRepType(k)}
                       className={`px-2 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
             ))}
           </div>
-          <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-xs" style={{maxWidth:160}} title={repType==='sr'?'Filter retailer columns by Sales Rep':'Filter retailer columns by VMI Rep'}>
+          <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-xs" style={{maxWidth:200}} title={repType==='sr'?'Filter retailer columns by Sales Rep':'Filter retailer columns by VMI Rep'}>
             {reps.map(r => <option key={r} value={r}>{r === 'All' ? 'All reps' : r}</option>)}
           </select>
           <span className="h-5 w-px bg-slate-200 mx-1"></span>
