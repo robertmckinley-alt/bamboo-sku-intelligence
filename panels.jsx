@@ -843,7 +843,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
             const tagS = window.BambooUI.TAG_STYLES[s.tag] || {dot:'#94a3b8'};
             return (
               <React.Fragment key={s.i}>
-                <div style={{position: 'absolute', left: 0, top, width: skuColW, height: cellH, background: 'white', borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #f1f5f9', zIndex: 5, display: 'flex', alignItems: 'center', padding: '0 10px', gap: 6, cursor: 'pointer'}}
+                <div style={{position: 'absolute', left: scroll.x, top, width: skuColW, height: cellH, background: 'white', borderRight: '1px solid #e5e7eb', borderBottom: '1px solid #f1f5f9', boxShadow: scroll.x > 0 ? '4px 0 8px -4px rgba(15,23,42,.18)' : 'none', zIndex: 5, display: 'flex', alignItems: 'center', padding: '0 10px', gap: 6, cursor: 'pointer'}}
                      className="hover:bg-emerald-50"
                      onClick={() => onPickSku(s.i)}>
                   <span className="font-mono text-[9px] text-slate-400 tabular-nums">#{s.rank}</span>
