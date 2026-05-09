@@ -4,7 +4,9 @@ const { Tag } = window.BambooUI;
 
 const SECTIONS = [
   {id: 'what', label: 'What this is'},
-  {id: 'views', label: 'The 4 main views'},
+  {id: 'whats-new', label: "What's new"},
+  {id: 'views', label: 'The 6 main views'},
+  {id: 'velocity', label: 'Finding velocity leaders'},
   {id: 'weights', label: 'Scoring weights explained'},
   {id: 'tags', label: 'Tag legend'},
   {id: 'shortcuts', label: 'Keyboard shortcuts'},
@@ -83,8 +85,26 @@ function HowTo({a}) {
             </p>
           </Section>
 
-          <Section refs={refs} id="views" title="The 4 main views">
-            <p>The app has four primary surfaces. Switch between them with the tab bar (or hit <Kbd>1</Kbd>–<Kbd>4</Kbd>).</p>
+          <Section refs={refs} id="whats-new" title="What's new in this build">
+            <p>
+              This release adds <strong>individual product SKU intelligence</strong>. Up to now the system tracked 111 SKU <em>groups</em> (e.g.&nbsp;"1g Platinum Prerolls", "Core Flower"). Each group rolls up dozens of real product SKUs underneath it (e.g.&nbsp;"Trophy Wife - Platinum 1g Preroll", "Golden Pineapple 1g Preroll"). The app now ingests all <strong>2,121 individual products</strong> from the Products Ordered file, mapped to their group and high-level category.
+            </p>
+            <p>
+              Four places this shows up:
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 my-3">
+              <li><strong>Categories tab → Top Performing Products table</strong> — bottom of the page. Filter by high-level category chip (Flower, Vapes, Prerolls…), brand, or search. Sortable by revenue, units, or velocity per month. Shows rank within category, share-of-category bar, and the SKU group each product rolls up into. Click any row to open that SKU group's detail drawer.</li>
+              <li><strong>SKU Engine → SKU detail drawer → Individual Products section</strong> — when you click into a SKU group, scroll past the carriers/non-carriers tables and you'll find every individual product inside that group ranked by revenue, with the share each takes of group revenue. Useful for "this group is doing $1.7M — which actual SKUs are driving it?"</li>
+              <li><strong>Reps tab</strong> — a new top-level tab. Per-rep cards show stores, total revenue, missed-rev opportunity, and store-tag mix. Click a rep card and the lower panes show: their <em>top SKU groups</em> (computed by summing the matrix rows for their clients) and their <em>top individual products to pitch</em> in the categories they already cover. Products their stores aren't yet carrying are flagged <span className="text-amber-700 font-mono text-[10px] uppercase">opp</span>.</li>
+              <li><strong>Call sheets</strong> — both the printable PDF and the CSV export now include the top 3 individual product names (with brands) under each pitched SKU group. Reps walk in with concrete product names instead of "I should pitch you something from the 1g Platinum Prerolls group."</li>
+            </ul>
+            <p className="text-stone-600 text-[12px]">
+              Limitation worth knowing: we don't have product&nbsp;×&nbsp;client attribution in the source data — only product totals. So when the Reps tab shows "top products to pitch in this rep's lead categories," that ranking is global within the categories the rep covers, not per-rep attribution. It's a "what to walk in with" reference, not a sales-credit ledger.
+            </p>
+          </Section>
+
+          <Section refs={refs} id="views" title="The 6 main views">
+            <p>The app has six primary surfaces. Switch between them with the tab bar (or hit <Kbd>1</Kbd>–<Kbd>6</Kbd>).</p>
 
             <Subsection name="SKU Engine">
               <p>The master table. Every active SKU, every metric, sortable by every column, filterable by category and tag. Click any row to open the detail panel.</p>
@@ -101,10 +121,33 @@ function HowTo({a}) {
               <Example use="I want to see who carries my whole top 10" do='Sort SKU rows by score → scan the top 10 across the column axis → any store with white cells in the top 10 is a Cross-Sell candidate. Click a white cell to jump straight into a SKU × retailer view.' />
             </Subsection>
 
+            <Subsection name="Categories">
+              <p>SKU groups grouped under their high-level category (Flower, Vapes, Prerolls, etc.). Includes per-category penetration rings, a Category Index summary, and the new <strong>Top Performing Products</strong> table at the bottom — the individual-SKU drill-down by category.</p>
+              <Example use="I want to find a brand's best-selling individual products in Vapes" do='Open Categories → scroll to Top Performing Products → click the Vapes chip → set the Brand dropdown to that brand. Sort by Revenue or Vel/mo. The list shows you the actual product names, not roll-ups.' />
+            </Subsection>
+
+            <Subsection name="Reps">
+              <p>Per-sales-rep view. Cards across the top with each rep's revenue, store count, missed-rev opportunity, and AT RISK / HIGH VALUE counts. Click a rep card and two panels appear below: their top SKU groups (attributed via their clients) and the top individual products to pitch in their lead categories. Each rep card has a 📄 button that prints a combined call sheet for their entire book.</p>
+              <Example use="I want to send Ashlea a call sheet for her whole book" do='Open Reps → click her card → press the 📄 print icon. The system generates a combined printable PDF — one page per store — with current stats, the missing top SKU groups, top individual products under each, and talking points.' />
+            </Subsection>
+
             <Subsection name="Performance Buckets">
-              <p>Curated lists for the things you'd otherwise have to filter for: Top Revenue Drivers, Highest Velocity, Most Distributed, Hidden Winners (high velocity but low distribution — the most profitable SKUs to push next), and Weak SKUs. Each card links back to the master table or detail panel.</p>
+              <p>Curated lists for the things you'd otherwise have to filter for: Top Revenue Drivers, <strong>Highest Velocity</strong>, Most Distributed, <strong>Hidden Winners</strong> (high velocity but low distribution — the most profitable SKUs to push next), and Weak SKUs. Each card links back to the master table or detail panel.</p>
               <Example use="I want to find SKUs that are quietly winning" do='Open Performance Buckets → look at Hidden Winners. These are SKUs that move at the stores carrying them but only sit on a fraction of doors. Pitching them is the single highest-leverage thing a rep can do.' />
             </Subsection>
+          </Section>
+
+          <Section refs={refs} id="velocity" title="Finding velocity leaders">
+            <p>
+              Velocity is one of the four most-asked-about metrics — units sold per carrying store per month — so the app surfaces it in five different places depending on what you're hunting for:
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 my-3">
+              <li><strong>SKU Engine view toggle</strong> — at the top of the master table there's a small <code>Revenue · Velocity · Distribution · Opportunity</code> switcher. Click <em>Velocity</em> and the velocity column gets highlighted emerald. Then click the column header to sort descending. That's your full ranked list across all 111 SKU groups with every other metric visible side-by-side.</li>
+              <li><strong>Buckets → Highest Velocity</strong> — a curated card with the top velocity SKUs already shortlisted.</li>
+              <li><strong>Buckets → Hidden Winners</strong> — high velocity <em>and</em> low distribution. The most profitable SKUs to pitch next, by definition. Start here on Monday mornings.</li>
+              <li><strong>Categories → Top Performing Products</strong> table — the new individual-product table has a <em>Vel / mo</em> column. Sort by it to find the fastest-selling individual products inside any high-level category.</li>
+              <li><strong>Scoring weights → Velocity slider</strong> — push it to 100% and reset the others to 0% if you want a pure velocity-first ranking applied across the whole app at once. Tags will recompute around the new ranking.</li>
+            </ul>
           </Section>
 
           <Section refs={refs} id="weights" title="Scoring weights explained">
@@ -161,7 +204,7 @@ function HowTo({a}) {
             <table className="w-full text-[12px] my-4 border border-stone-200 rounded overflow-hidden">
               <tbody className="divide-y divide-stone-100">
                 <tr><td className="px-3 py-2 font-mono w-24"><Kbd>/</Kbd></td><td className="px-3 py-2">Focus the search box on the active table</td></tr>
-                <tr><td className="px-3 py-2 font-mono"><Kbd>1</Kbd> <Kbd>2</Kbd> <Kbd>3</Kbd> <Kbd>4</Kbd></td><td className="px-3 py-2">Jump to SKU Engine / Retailers / Matrix / Buckets</td></tr>
+                <tr><td className="px-3 py-2 font-mono"><Kbd>1</Kbd>–<Kbd>6</Kbd></td><td className="px-3 py-2">Jump between tabs: 1 SKU Engine · 2 Retailers · 3 Matrix · 4 Categories · 5 Reps · 6 Buckets</td></tr>
                 <tr><td className="px-3 py-2 font-mono"><Kbd>Esc</Kbd></td><td className="px-3 py-2">Close the open detail panel or modal</td></tr>
                 <tr><td className="px-3 py-2 font-mono"><Kbd>Tab</Kbd></td><td className="px-3 py-2">Walk forward through interactive elements (focus rings show where you are)</td></tr>
                 <tr><td className="px-3 py-2 font-mono"><Kbd>↑</Kbd> <Kbd>↓</Kbd></td><td className="px-3 py-2">In a focused slider, nudge the weight by 1%</td></tr>
@@ -193,6 +236,7 @@ function HowTo({a}) {
               <li><strong>Retailers carrying</strong> — sortable table of every store that bought this SKU, with their revenue and unit contribution. Click a store to jump to its detail panel.</li>
               <li><strong>Retailers <em>not</em> carrying</strong> — the placement opportunity, sorted by store opportunity score so the highest-leverage targets float to the top.</li>
               <li><strong>Suggested action</strong> — Expand / Push / Fix / Cut, with a single sentence of rationale tied to the actual numbers.</li>
+              <li><strong>Individual Products</strong> — every real product SKU rolling up into this group, ranked by revenue with share-of-group bars. Use the "Show all" toggle to expand past the top 8. This is the answer to "we know this group does $X, but which actual SKUs are doing the work?"</li>
             </ul>
           </Section>
 
@@ -249,7 +293,7 @@ function HowTo({a}) {
           </Section>
 
           <footer className="mt-12 pt-6 border-t border-stone-200 text-[11px] text-stone-500 font-mono">
-            Bamboo SKU Intelligence v2 · {a.meta.startDate} → {a.meta.endDate} · {a.meta.totalClients} retailers · {a.skus.length} SKUs · {a.meta.totalUnits.toLocaleString()} units
+            Bamboo SKU Intelligence v2.1 · {a.meta.startDate} → {a.meta.endDate} · {a.meta.totalClients} retailers · {a.skus.length} SKU groups · {(a.products||[]).length} individual products · {a.meta.totalUnits.toLocaleString()} units
           </footer>
         </article>
       </div>
