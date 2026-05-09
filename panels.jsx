@@ -34,13 +34,10 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
   const [nonCarrySort, setNonCarrySort] = useState({key: 'oppScore', dir: 'desc'});
   const [carrySort, setCarrySort] = useState({key: 'r', dir: 'desc'});
   const [pipelineIds, setPipelineIds] = useState(new Set());
-  // If a rep context was passed in (i.e. drawer opened from a rep-filtered view),
-  // scope the carriers / non-carriers tables to that rep's clients by default.
-  // The user can toggle off to see all stores.
-  const [scopeToRep, setScopeToRep] = useState(!!(repContext && repContext.repFilter && repContext.repFilter !== 'All'));
-  React.useEffect(() => {
-    setScopeToRep(!!(repContext && repContext.repFilter && repContext.repFilter !== 'All'));
-  }, [repContext?.repFilter, repContext?.repType, skuId]);
+  // Drawer always opens UNSCOPED (full store list visible). When a rep context
+  // was passed in, the user can toggle on the scope to filter to that rep's book.
+  const [scopeToRep, setScopeToRep] = useState(false);
+  React.useEffect(() => { setScopeToRep(false); }, [repContext?.repFilter, repContext?.repType, skuId]);
   if (!sku) return null;
 
   // Helpers — derive the rep client set if the scope is active
@@ -138,11 +135,11 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
           {repContext && repContext.repFilter && repContext.repFilter !== 'All' && (
             <div className="mt-2 inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-200 text-[11px]">
               <span className="text-emerald-900">
-                Scoped to <b>{repContext.repFilter}</b>'s book ({repContext.repType === 'vr' ? 'VMI rep' : 'sales rep'}) — {repClientSet ? repClientSet.size : 0} stores
+                {scopeToRep ? <>Scoped to <b>{repContext.repFilter}</b>'s book ({repContext.repType === 'vr' ? 'VMI rep' : 'sales rep'}) — showing only their stores</> : <>Available filter: <b>{repContext.repFilter}</b>'s book ({repContext.repType === 'vr' ? 'VMI rep' : 'sales rep'})</>}
               </span>
               <button onClick={() => setScopeToRep(s => !s)}
                       className="font-mono text-[10px] text-emerald-700 hover:text-emerald-900 underline decoration-dotted">
-                {scopeToRep ? 'show all stores' : 'show only this book'}
+                {scopeToRep ? 'show all stores' : 'filter to this book'}
               </button>
             </div>
           )}
