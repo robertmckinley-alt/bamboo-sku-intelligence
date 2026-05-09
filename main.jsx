@@ -6,6 +6,7 @@ const { MasterSkuTable, RetailerTable } = window.BambooTables;
 const { SkuDetail, RetailerDetail, DistributionMatrix, Buckets } = window.BambooPanels;
 const { CategoryLeaderboards } = window.BambooCategories;
 const { RepsPanel } = window.BambooReps;
+const { TopSkusPanel } = window.BambooTopSkus;
 const { exportCallSheetCSV, exportCallSheetPrintable } = window.BambooExport;
 const { HowTo } = window.BambooHowTo;
 
@@ -54,8 +55,9 @@ function App() {
         if (e.key === '2') setTab('retailers');
         if (e.key === '3') setTab('matrix');
         if (e.key === '4') setTab('categories');
-        if (e.key === '5') setTab('reps');
-        if (e.key === '6') setTab('buckets');
+        if (e.key === '5') setTab('topskus');
+        if (e.key === '6') setTab('reps');
+        if (e.key === '7') setTab('buckets');
       }
     };
     window.addEventListener('keydown', onKey);
@@ -69,6 +71,7 @@ function App() {
     {id:'retailers', label:'Retailers'},
     {id:'matrix', label:'Distribution Matrix'},
     {id:'categories', label:'Categories'},
+    {id:'topskus', label:'Top SKUs'},
     {id:'reps', label:'Reps'},
     {id:'buckets', label:'Buckets'},
     {id:'howto', label:'How to Use'},
@@ -109,6 +112,11 @@ function App() {
           {tab === 'categories' && (
             <div className="overflow-auto h-full">
               <CategoryLeaderboards a={analytics} onPickSku={setPickedSku} />
+            </div>
+          )}
+          {tab === 'topskus' && (
+            <div className="overflow-auto h-full">
+              <TopSkusPanel a={analytics} onPickSku={setPickedSku} />
             </div>
           )}
           {tab === 'reps' && (
