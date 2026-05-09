@@ -139,8 +139,9 @@ function App() {
 
         <aside className="rail w-72 border-l border-slate-200 bg-white flex-shrink-0 overflow-auto rail-stack no-print">
           <WeightPanel skuW={skuW} setSkuW={setSkuW} storeW={storeW} setStoreW={setStoreW} onReset={resetWeights} />
-          <RepLeaderboard a={analytics} onPickClient={setPickedClient} onExportRep={(rep) => {
-            const ids = analytics.clients.filter(c => (c.sr||'Unassigned') === rep).map(c => c.i);
+          <RepLeaderboard a={analytics} onPickClient={setPickedClient} onExportRep={(rep, repType) => {
+            const field = repType === 'vr' ? 'vr' : 'sr';
+            const ids = analytics.clients.filter(c => (c[field]||'Unassigned') === rep).map(c => c.i);
             exportCallSheetPrintable(analytics, ids);
           }} />
           <TagSummary a={analytics} />
@@ -172,10 +173,11 @@ function App() {
 
 // ============== Rep Leaderboard ==============
 function RepLeaderboard({a, onPickClient, onExportRep}) {
+  const [repType, setRepType] = useState('sr'); // 'sr' = Sales Rep, 'vr' = VMI Rep
   const reps = useMemo(() => {
     const r = {};
     for (const c of a.clients) {
-      const k = c.sr || 'Unassigned';
+      const k = c[repType] || 'Unassigned';
       if (!r[k]) r[k] = {name: k, stores: 0, revenue: 0, units: 0, orders: 0, missedRev: 0};
       r[k].stores++;
       r[k].revenue += c.rev;
@@ -184,21 +186,29 @@ function RepLeaderboard({a, onPickClient, onExportRep}) {
       r[k].missedRev += c.missedRev;
     }
     return Object.values(r).sort((x,y) => y.revenue - x.revenue);
-  }, [a]);
+  }, [a, repType]);
   const maxRev = reps[0]?.revenue || 1;
   return (
     <div className="border-t border-slate-200">
-      <h3 className="px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-700 small-caps flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        Sales Reps
-      </h3>
+      <div className="px-3 py-2 flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-700 small-caps flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          {repType === 'sr' ? 'Sales Reps' : 'VMI Reps'}
+        </h3>
+        <div className="flex bg-slate-100 rounded-md p-0.5 text-[9px] font-semibold">
+          {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
+            <button key={k} onClick={() => setRepType(k)}
+                    className={`px-1.5 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+          ))}
+        </div>
+      </div>
       <div className="px-2 pb-2">
         {reps.map(r => (
           <div key={r.name} className="group rounded-md hover:bg-slate-50 px-2 py-1.5 transition">
             <div className="flex items-baseline gap-2">
               <span className="text-[11px] truncate flex-1 font-semibold" title={r.name}>{r.name}</span>
               <span className="text-[11px] font-mono tabular-nums text-slate-700">{fmt$(r.revenue)}</span>
-              <button onClick={() => onExportRep(r.name)} className="opacity-0 group-hover:opacity-100 text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-slate-900 hover:text-white rounded transition" title="Print combined call sheet">📄</button>
+              <button onClick={() => onExportRep(r.name, repType)} className="opacity-0 group-hover:opacity-100 text-[10px] px-1.5 py-0.5 bg-slate-100 hover:bg-slate-900 hover:text-white rounded transition" title="Print combined call sheet">📄</button>
             </div>
             <div className="flex items-center gap-1.5 mt-1">
               <div className="flex-1 h-1 rounded-full overflow-hidden bg-slate-100">
@@ -259,15 +269,21 @@ function Footnote({a}) {
 function BulkExport({a, onClose}) {
   const [mode, setMode] = useState('rep');
   const [rep, setRep] = useState('');
+  const [repType, setRepType] = useState('sr'); // 'sr' = Sales Rep, 'vr' = VMI Rep
   const [storeTag, setStoreTag] = useState('HIGH VALUE — CALL NOW');
   const [selected, setSelected] = useState(new Set());
-  const reps = useMemo(() => [...new Set(a.clients.map(c => c.sr || 'Unassigned'))].sort(), [a]);
+  const reps = useMemo(
+    () => [...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].sort(),
+    [a, repType]
+  );
+  // Reset rep when type flips so we don't carry a stale name
+  useEffect(() => { setRep(''); }, [repType]);
 
   const ids = useMemo(() => {
-    if (mode === 'rep') return a.clients.filter(c => (c.sr||'Unassigned') === rep).map(c => c.i);
+    if (mode === 'rep') return a.clients.filter(c => (c[repType]||'Unassigned') === rep).map(c => c.i);
     if (mode === 'tag') return a.clients.filter(c => c.storeTag === storeTag).map(c => c.i);
     return [...selected];
-  }, [a, mode, rep, storeTag, selected]);
+  }, [a, mode, rep, repType, storeTag, selected]);
 
   const toggleSelect = (i) => {
     const s = new Set(selected);
@@ -297,10 +313,18 @@ function BulkExport({a, onClose}) {
         <div className="px-5 py-4 flex-1 overflow-auto">
           {mode === 'rep' && (
             <div>
-              <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold small-caps">Sales Rep</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold small-caps">{repType === 'sr' ? 'Sales Rep' : 'VMI Rep'}</label>
+                <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+                  {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
+                    <button key={k} onClick={() => setRepType(k)}
+                            className={`px-2 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+                  ))}
+                </div>
+              </div>
               <select value={rep} onChange={e => setRep(e.target.value)} className="block w-full mt-1 text-sm">
                 <option value="">— pick a rep —</option>
-                {reps.map(r => <option key={r} value={r}>{r} ({a.clients.filter(c => (c.sr||'Unassigned')===r).length} stores)</option>)}
+                {reps.map(r => <option key={r} value={r}>{r} ({a.clients.filter(c => (c[repType]||'Unassigned')===r).length} stores)</option>)}
               </select>
             </div>
           )}

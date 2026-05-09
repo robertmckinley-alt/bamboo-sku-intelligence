@@ -31,24 +31,28 @@ function TopSkusPanel({a, onPickSku}) {
   const [sort, setSort] = useState({key: 'rev', dir: 'desc'});
   const [search, setSearch] = useState('');
   const [repFilter, setRepFilter] = useState('All');
+  const [repType, setRepType] = useState('sr'); // 'sr' = Sales Rep, 'vr' = VMI Rep
   const [showOnlyMissing, setShowOnlyMissing] = useState(false);
 
   // Rep options sorted by revenue (so highest-volume reps appear first)
   const repOptions = useMemo(() => {
     const map = new Map();
     for (const cl of a.clients) {
-      const k = cl.sr || 'Unassigned';
+      const k = cl[repType] || 'Unassigned';
       map.set(k, (map.get(k) || 0) + (cl.rev || 0));
     }
     const arr = [...map.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);
     return ['All', ...arr];
-  }, [a.clients]);
+  }, [a.clients, repType]);
+
+  // Reset rep filter when the rep type changes
+  React.useEffect(() => { setRepFilter('All'); setShowOnlyMissing(false); }, [repType]);
 
   // For a given rep, the set of SKU group IDs their clients carry / don't carry.
   // Used to filter the products list when a rep is selected.
   const repBook = useMemo(() => {
     if (repFilter === 'All') return null;
-    const clientIds = new Set(a.clients.filter(cl => (cl.sr || 'Unassigned') === repFilter).map(cl => cl.i));
+    const clientIds = new Set(a.clients.filter(cl => (cl[repType] || 'Unassigned') === repFilter).map(cl => cl.i));
     const carrying = new Set();
     for (const m of a.matrixRaw) {
       if (clientIds.has(m.c) && (m.r || 0) > 0) carrying.add(m.s);
@@ -58,7 +62,7 @@ function TopSkusPanel({a, onPickSku}) {
     const missing = new Set();
     for (const g of allGroups) if (!carrying.has(g)) missing.add(g);
     return {clientIds, carrying, missing, repName: repFilter};
-  }, [repFilter, a]);
+  }, [repFilter, repType, a]);
 
   // Counts per category (for chip labels)
   const catCounts = useMemo(() => {
@@ -147,7 +151,7 @@ function TopSkusPanel({a, onPickSku}) {
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 space-y-2">
             <div className="flex items-baseline justify-between gap-3 flex-wrap">
               <div>
-                <h3 className="font-display text-[16px] font-semibold tracking-tight">{cat} <span className="text-slate-400 italic">— top 50{repFilter !== 'All' ? <span className="text-emerald-700"> · {repFilter}{showOnlyMissing ? ' (missing)' : ''}</span> : null}</span></h3>
+                <h3 className="font-display text-[16px] font-semibold tracking-tight">{cat} <span className="text-slate-400 italic">— top 50{repFilter !== 'All' ? <span className="text-emerald-700"> · {repFilter} ({repType==='sr'?'sales':'VMI'}){showOnlyMissing ? ' · missing' : ''}</span> : null}</span></h3>
                 <div className="text-[10px] font-mono text-slate-500 small-caps">
                   {fmtN(rows.length)} of {fmtN(catCounts[cat]||0)} products · shown = <b className="text-slate-700">{fmt$(top25Rev)}</b> ({fmtPct(top25Rev/totalCatRev, 0)} of {cat} revenue)
                 </div>
@@ -158,18 +162,24 @@ function TopSkusPanel({a, onPickSku}) {
               <input id="topskus-search" type="search" placeholder="Search product or brand…"
                      value={search} onChange={e => setSearch(e.target.value)}
                      className="text-[11px] flex-1 min-w-[200px]" />
+              <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+                {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
+                  <button key={k} onClick={() => setRepType(k)}
+                          className={`px-2 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+                ))}
+              </div>
               <select value={repFilter} onChange={e => { setRepFilter(e.target.value); if (e.target.value === 'All') setShowOnlyMissing(false); }}
-                      className="text-[11px]" title="Filter to a sales rep's book of business">
-                {repOptions.map(r => <option key={r} value={r}>{r === 'All' ? 'All reps' : r}</option>)}
+                      className="text-[11px]" title={repType==='sr'?"Filter to a sales rep's book of business":"Filter to a VMI rep's book of business"}>
+                {repOptions.map(r => <option key={r} value={r}>{r === 'All' ? (repType==='sr'?'All sales reps':'All VMI reps') : r}</option>)}
               </select>
               {repFilter !== 'All' && (
                 <label className="text-[10px] font-mono text-slate-600 flex items-center gap-1.5 cursor-pointer select-none px-2 py-1 rounded bg-white border border-slate-200 hover:border-slate-300">
                   <input type="checkbox" checked={showOnlyMissing} onChange={e => setShowOnlyMissing(e.target.checked)} className="cursor-pointer" />
-                  Only missing from {repFilter.split(' ')[0]}'s book
+                  Only missing from {repFilter.split(' ')[0]}'s book ({repType==='sr'?'sales':'VMI'})
                 </label>
               )}
-              {(search || repFilter !== 'All' || showOnlyMissing) && (
-                <button onClick={() => { setSearch(''); setRepFilter('All'); setShowOnlyMissing(false); }}
+              {(search || repFilter !== 'All' || showOnlyMissing || repType !== 'sr') && (
+                <button onClick={() => { setSearch(''); setRepFilter('All'); setShowOnlyMissing(false); setRepType('sr'); }}
                         className="text-[10px] font-mono text-slate-500 hover:text-slate-900 underline decoration-dotted">
                   clear filters
                 </button>

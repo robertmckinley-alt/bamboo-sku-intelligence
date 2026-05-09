@@ -121,18 +121,22 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
 // ============== Retailer Table ==============
 function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, storeTagFilter, setStoreTagFilter}) {
   const [sort, setSort] = useState({key:'rev', dir:'desc'});
-  const reps = useMemo(() => ['All', ...[...new Set(a.clients.map(c => c.sr || 'Unassigned'))].sort()], [a]);
+  const [repType, setRepType] = useState('sr'); // 'sr' = Sales Rep, 'vr' = VMI Rep
+  const reps = useMemo(
+    () => ['All', ...[...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].sort()],
+    [a, repType]
+  );
 
   const filtered = useMemo(() => {
     let f = a.clients;
-    if (repFilter && repFilter !== 'All') f = f.filter(c => (c.sr||'Unassigned') === repFilter);
+    if (repFilter && repFilter !== 'All') f = f.filter(c => (c[repType]||'Unassigned') === repFilter);
     if (storeTagFilter && storeTagFilter !== 'All') f = f.filter(c => c.storeTag === storeTagFilter);
     if (search) {
       const q = search.toLowerCase();
       f = f.filter(c => c.n.toLowerCase().includes(q));
     }
     return f;
-  }, [a, repFilter, storeTagFilter, search]);
+  }, [a, repFilter, repType, storeTagFilter, search]);
 
   const sorted = useMemo(() => {
     const arr = [...filtered];
@@ -158,8 +162,14 @@ function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, s
         <div className="flex items-center gap-2 flex-wrap">
           <input type="search" placeholder="Search retailers…" value={search} onChange={e => setSearch(e.target.value)}
                  className="text-xs flex-1 min-w-[200px]" />
-          <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-xs" style={{maxWidth:200}}>
-            {reps.map(c => <option key={c} value={c}>{c === 'All' ? 'All reps' : c}</option>)}
+          <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+            {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
+              <button key={k} onClick={() => { setRepType(k); setRepFilter('All'); }}
+                      className={`px-2 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+            ))}
+          </div>
+          <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-xs" style={{maxWidth:200}} title={repType==='sr'?'Filter by Sales Rep':'Filter by VMI Rep'}>
+            {reps.map(c => <option key={c} value={c}>{c === 'All' ? (repType==='sr'?'All sales reps':'All VMI reps') : c}</option>)}
           </select>
           <span className="text-[11px] text-slate-500 font-mono tabular-nums ml-auto">{sorted.length} retailers</span>
         </div>
@@ -173,7 +183,7 @@ function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, s
           <thead>
             <tr>
               <Th k="n" sort={sort} setSort={setSort} label="Retailer" />
-              <Th k="sr" sort={sort} setSort={setSort} label="Sales Rep" />
+              <Th k={repType} sort={sort} setSort={setSort} label={repType==="sr"?"Sales Rep":"VMI Rep"} />
               <Th k="storeTag" sort={sort} setSort={setSort} label="Tag" />
               <Th k="oppScore" sort={sort} setSort={setSort} label="Opp Score" align="right" />
               <Th k="rev" sort={sort} setSort={setSort} label="Revenue" align="right" />
@@ -194,7 +204,7 @@ function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, s
             {sorted.map(c => (
               <tr key={c.i} onClick={() => onPick(c.i)} className="cursor-pointer">
                 <td className="truncate max-w-[260px]">{c.n}</td>
-                <td className="text-slate-600 truncate max-w-[140px]">{c.sr || '—'}</td>
+                <td className="text-slate-600 truncate max-w-[140px]" title={`Sales: ${c.sr||"—"} · VMI: ${c.vr||"—"}`}>{c[repType] || '—'}</td>
                 <td><Tag tag={c.storeTag} /></td>
                 <td className="text-right" style={{minWidth:110}}><ScoreBar score={c.oppScore} height={4} /></td>
                 <td className="text-right tabular-nums font-mono">{fmt$(c.rev)}</td>

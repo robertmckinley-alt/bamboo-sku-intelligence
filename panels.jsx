@@ -558,6 +558,8 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
   const [skuTagFilter, setSkuTagFilter] = useState('All');
   const [storeTagFilter, setStoreTagFilter] = useState('All');
   const [repFilter, setRepFilter] = useState('All');
+  const [repType, setRepType] = useState('sr'); // 'sr' = Sales Rep, 'vr' = VMI Rep
+  React.useEffect(() => { setRepFilter('All'); }, [repType]);
   const [skuSearch, setSkuSearch] = useState('');
   const [storeSearch, setStoreSearch] = useState('');
   const [hideCarrying, setHideCarrying] = useState(false);
@@ -592,7 +594,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
   const clients = useMemo(() => {
     let arr = [...a.clients];
     if (storeTagFilter !== 'All') arr = arr.filter(c => c.storeTag === storeTagFilter);
-    if (repFilter !== 'All') arr = arr.filter(c => (c.sr || 'Unassigned') === repFilter);
+    if (repFilter !== 'All') arr = arr.filter(c => (c[repType] || 'Unassigned') === repFilter);
     if (storeSearch) {
       const q = storeSearch.toLowerCase();
       arr = arr.filter(c => c.n.toLowerCase().includes(q));
@@ -602,7 +604,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
     else if (storeSort === 'rep') arr.sort((x,y) => (x.sr||'').localeCompare(y.sr||''));
     else if (storeSort === 'opp') arr.sort((x,y) => y.oppScore - x.oppScore);
     return arr;
-  }, [a, storeTagFilter, repFilter, storeSearch, storeSort]);
+  }, [a, storeTagFilter, repFilter, repType, storeSearch, storeSort]);
 
   // lookup: skuId -> clientId -> {r, u}
   const lookup = useMemo(() => {
@@ -661,7 +663,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
   const totalH = skus.length * cellH;
 
   const cats = ['All', ...[...new Set(a.skus.map(s => s.c))].sort()];
-  const reps = ['All', ...[...new Set(a.clients.map(c => c.sr || 'Unassigned'))].sort()];
+  const reps = useMemo(() => ['All', ...[...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].sort()], [a, repType]);
 
   const onCellEnter = useCallback((sx, cx, ev) => {
     // Avoid re-firing if we're already showing this exact cell
@@ -722,7 +724,13 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
           <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className="text-xs">
             {cats.map(c => <option key={c} value={c}>{c === 'All' ? 'All categories' : c}</option>)}
           </select>
-          <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-xs" style={{maxWidth:160}}>
+          <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+            {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
+              <button key={k} onClick={() => setRepType(k)}
+                      className={`px-2 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+            ))}
+          </div>
+          <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-xs" style={{maxWidth:160}} title={repType==='sr'?'Filter retailer columns by Sales Rep':'Filter retailer columns by VMI Rep'}>
             {reps.map(r => <option key={r} value={r}>{r === 'All' ? 'All reps' : r}</option>)}
           </select>
           <span className="h-5 w-px bg-slate-200 mx-1"></span>
@@ -787,7 +795,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
                   <div className="absolute origin-bottom-left whitespace-nowrap" style={{transform: 'rotate(-65deg)', bottom: 6, left: cellW - 2, width: headerH - 12, fontSize: 9, color: '#475569', fontFamily: 'JetBrains Mono'}}>
                     <span className="font-semibold">{c.n}</span>
                     <span className="ml-1 text-emerald-700">{fmt$(c.rev/1000).replace('$','$')+'k'}</span>
-                    <span className="ml-1 text-slate-400">{c.sr ? c.sr.split(' ').map(p=>p[0]).join('').slice(0,2) : '–'}</span>
+                    <span className="ml-1 text-slate-400" title={`Sales: ${c.sr||'—'} · VMI: ${c.vr||'—'}`}>{c[repType] ? c[repType].split(' ').map(p=>p[0]).join('').slice(0,2) : '–'}</span>
                   </div>
                 </div>
               );
