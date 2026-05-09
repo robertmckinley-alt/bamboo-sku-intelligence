@@ -30,6 +30,35 @@ function TopSkusPanel({a, onPickSku}) {
   const [cat, setCat] = useState(cats[0] || 'All');
   const [sort, setSort] = useState({key: 'rev', dir: 'desc'});
   const [search, setSearch] = useState('');
+  const [repFilter, setRepFilter] = useState('All');
+  const [showOnlyMissing, setShowOnlyMissing] = useState(false);
+
+  // Rep options sorted by revenue (so highest-volume reps appear first)
+  const repOptions = useMemo(() => {
+    const map = new Map();
+    for (const cl of a.clients) {
+      const k = cl.sr || 'Unassigned';
+      map.set(k, (map.get(k) || 0) + (cl.rev || 0));
+    }
+    const arr = [...map.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);
+    return ['All', ...arr];
+  }, [a.clients]);
+
+  // For a given rep, the set of SKU group IDs their clients carry / don't carry.
+  // Used to filter the products list when a rep is selected.
+  const repBook = useMemo(() => {
+    if (repFilter === 'All') return null;
+    const clientIds = new Set(a.clients.filter(cl => (cl.sr || 'Unassigned') === repFilter).map(cl => cl.i));
+    const carrying = new Set();
+    for (const m of a.matrixRaw) {
+      if (clientIds.has(m.c) && (m.r || 0) > 0) carrying.add(m.s);
+    }
+    // Track missing too: groups present in any client globally but not in this rep's book
+    const allGroups = new Set(a.skus.map(s => s.i));
+    const missing = new Set();
+    for (const g of allGroups) if (!carrying.has(g)) missing.add(g);
+    return {clientIds, carrying, missing, repName: repFilter};
+  }, [repFilter, a]);
 
   // Counts per category (for chip labels)
   const catCounts = useMemo(() => {
@@ -47,9 +76,15 @@ function TopSkusPanel({a, onPickSku}) {
     return t;
   }, [products]);
 
-  // Top 25 (after filter & sort) within selected category
+  // Top 50 within selected category, with optional rep + missing-only filter
   const rows = useMemo(() => {
     let arr = products.filter(p => p.c === cat);
+    if (repBook) {
+      // When a rep is selected, restrict to products whose SKU group is in the rep's book
+      // (or, if showOnlyMissing, products whose group is MISSING from the rep's book)
+      const target = showOnlyMissing ? repBook.missing : repBook.carrying;
+      arr = arr.filter(p => target.has(p.sg));
+    }
     if (search) {
       const q = search.toLowerCase();
       arr = arr.filter(p => p.n.toLowerCase().includes(q) || (p.b||'').toLowerCase().includes(q));
@@ -61,7 +96,7 @@ function TopSkusPanel({a, onPickSku}) {
       return ((xv ?? 0) - (yv ?? 0)) * m;
     });
     return arr.slice(0, 50);
-  }, [products, cat, search, sort]);
+  }, [products, cat, search, sort, repBook, showOnlyMissing]);
 
   const click = (k) => setSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}));
   const Th = ({k, label, align='left', hint}) => (
@@ -109,16 +144,37 @@ function TopSkusPanel({a, onPickSku}) {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
         {/* Main table */}
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-baseline justify-between gap-3 flex-wrap">
-            <div>
-              <h3 className="font-display text-[16px] font-semibold tracking-tight">{cat} <span className="text-slate-400 italic">— top 50</span></h3>
-              <div className="text-[10px] font-mono text-slate-500 small-caps">
-                {fmtN(catCounts[cat]||0)} products · top 50 = <b className="text-slate-700">{fmt$(top25Rev)}</b> ({fmtPct(top25Rev/totalCatRev, 0)} of {cat} revenue)
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 space-y-2">
+            <div className="flex items-baseline justify-between gap-3 flex-wrap">
+              <div>
+                <h3 className="font-display text-[16px] font-semibold tracking-tight">{cat} <span className="text-slate-400 italic">— top 50{repFilter !== 'All' ? <span className="text-emerald-700"> · {repFilter}{showOnlyMissing ? ' (missing)' : ''}</span> : null}</span></h3>
+                <div className="text-[10px] font-mono text-slate-500 small-caps">
+                  {fmtN(rows.length)} of {fmtN(catCounts[cat]||0)} products · shown = <b className="text-slate-700">{fmt$(top25Rev)}</b> ({fmtPct(top25Rev/totalCatRev, 0)} of {cat} revenue)
+                </div>
               </div>
+              <span className="text-[10px] font-mono text-slate-400 italic self-center">click row → non-carriers list</span>
             </div>
-            <input id="topskus-search" type="search" placeholder="Search product or brand…"
-                   value={search} onChange={e => setSearch(e.target.value)}
-                   className="w-56 text-[11px]" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <input id="topskus-search" type="search" placeholder="Search product or brand…"
+                     value={search} onChange={e => setSearch(e.target.value)}
+                     className="text-[11px] flex-1 min-w-[200px]" />
+              <select value={repFilter} onChange={e => { setRepFilter(e.target.value); if (e.target.value === 'All') setShowOnlyMissing(false); }}
+                      className="text-[11px]" title="Filter to a sales rep's book of business">
+                {repOptions.map(r => <option key={r} value={r}>{r === 'All' ? 'All reps' : r}</option>)}
+              </select>
+              {repFilter !== 'All' && (
+                <label className="text-[10px] font-mono text-slate-600 flex items-center gap-1.5 cursor-pointer select-none px-2 py-1 rounded bg-white border border-slate-200 hover:border-slate-300">
+                  <input type="checkbox" checked={showOnlyMissing} onChange={e => setShowOnlyMissing(e.target.checked)} className="cursor-pointer" />
+                  Only missing from {repFilter.split(' ')[0]}'s book
+                </label>
+              )}
+              {(search || repFilter !== 'All' || showOnlyMissing) && (
+                <button onClick={() => { setSearch(''); setRepFilter('All'); setShowOnlyMissing(false); }}
+                        className="text-[10px] font-mono text-slate-500 hover:text-slate-900 underline decoration-dotted">
+                  clear filters
+                </button>
+              )}
+            </div>
           </div>
           <div className="overflow-auto" style={{maxHeight: '70vh'}}>
             <table className="dt">
@@ -164,7 +220,7 @@ function TopSkusPanel({a, onPickSku}) {
             </table>
           </div>
           <div className="px-4 py-2 border-t border-slate-200 bg-slate-50 text-[10px] font-mono text-slate-500 leading-relaxed">
-            <b>Note:</b> Distribution data is at SKU-group level, not per individual product. Clicking a row opens the drawer for that product's SKU group ({rows[0] ? a.skuById.get(rows[0].sg)?.n : '—'}, etc.) — the "Retailers NOT carrying" list there is your call sheet.
+            <b>Note:</b> Distribution data is at SKU-group level. Clicking a row opens the drawer for that product's SKU group — the "Retailers NOT carrying" list there is your call sheet. The rep filter restricts to products whose <em>SKU group</em> is in (or, with the missing toggle, NOT in) the selected rep's book of business — product-level rep attribution isn't in the source data.
           </div>
         </div>
 
