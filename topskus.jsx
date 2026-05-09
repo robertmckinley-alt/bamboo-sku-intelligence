@@ -60,7 +60,7 @@ function TopSkusPanel({a, onPickSku}) {
       if (typeof xv === 'string') return (xv||'').localeCompare(yv||'') * m;
       return ((xv ?? 0) - (yv ?? 0)) * m;
     });
-    return arr.slice(0, 25);
+    return arr.slice(0, 50);
   }, [products, cat, search, sort]);
 
   const click = (k) => setSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}));
@@ -111,9 +111,9 @@ function TopSkusPanel({a, onPickSku}) {
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-baseline justify-between gap-3 flex-wrap">
             <div>
-              <h3 className="font-display text-[16px] font-semibold tracking-tight">{cat} <span className="text-slate-400 italic">— top 25</span></h3>
+              <h3 className="font-display text-[16px] font-semibold tracking-tight">{cat} <span className="text-slate-400 italic">— top 50</span></h3>
               <div className="text-[10px] font-mono text-slate-500 small-caps">
-                {fmtN(catCounts[cat]||0)} products · top 25 = <b className="text-slate-700">{fmt$(top25Rev)}</b> ({fmtPct(top25Rev/totalCatRev, 0)} of {cat} revenue)
+                {fmtN(catCounts[cat]||0)} products · top 50 = <b className="text-slate-700">{fmt$(top25Rev)}</b> ({fmtPct(top25Rev/totalCatRev, 0)} of {cat} revenue)
               </div>
             </div>
             <input id="topskus-search" type="search" placeholder="Search product or brand…"
