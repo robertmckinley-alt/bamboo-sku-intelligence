@@ -21,12 +21,18 @@ const { Tag, ScoreBar } = window.BambooUI;
 // reference, not a hard attribution.
 function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
   const [selected, setSelected] = useState(null);
+  // 'sr' = Sales Rep (default), 'vr' = VMI Rep
+  const [repType, setRepType] = useState('sr');
 
-  // Aggregate per rep
+  // When the rep type changes, clear the selected rep so we don't try to
+  // look up a sales-rep name in the VMI-rep aggregation (or vice versa).
+  React.useEffect(() => { setSelected(null); }, [repType]);
+
+  // Aggregate per rep — keyed by either cl.sr (sales rep) or cl.vr (VMI rep)
   const reps = useMemo(() => {
     const map = new Map();
     for (const cl of a.clients) {
-      const key = cl.sr || 'Unassigned';
+      const key = cl[repType] || 'Unassigned';
       if (!map.has(key)) {
         map.set(key, {
           name: key, stores: 0, revenue: 0, units: 0, orders: 0,
@@ -53,7 +59,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
     }
     arr.sort((x, y) => y.revenue - x.revenue);
     return arr;
-  }, [a]);
+  }, [a, repType]);
 
   const sel = useMemo(
     () => reps.find(r => r.name === selected) || reps[0],
@@ -106,9 +112,17 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
   return (
     <div className="p-4 space-y-4">
       <div>
-        <div className="flex items-baseline justify-between mb-2">
-          <h2 className="font-display text-[18px] font-semibold tracking-tight">Sales Reps</h2>
-          <span className="text-[10px] font-mono text-slate-500 small-caps">{reps.length} reps · click a card for product drill-down</span>
+        <div className="flex items-baseline justify-between mb-2 gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <h2 className="font-display text-[18px] font-semibold tracking-tight">{repType === 'sr' ? 'Sales Reps' : 'VMI Reps'}</h2>
+            <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+              {[['sr','Sales Rep'],['vr','VMI Rep']].map(([k,l]) => (
+                <button key={k} onClick={() => setRepType(k)}
+                        className={`px-2.5 py-0.5 rounded ${repType===k ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+              ))}
+            </div>
+          </div>
+          <span className="text-[10px] font-mono text-slate-500 small-caps">{reps.length} {repType === 'sr' ? 'sales reps' : 'VMI reps'} · click a card for product drill-down</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {reps.map(r => (
@@ -139,7 +153,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                 <span>Avg opp <b className="text-slate-800">{r.oppScore.toFixed(0)}</b></span>
                 {r.highValue > 0 && <span className="text-emerald-700">{r.highValue} call-now</span>}
                 {r.atRisk > 0 && <span className="text-rose-700">{r.atRisk} at risk</span>}
-                <button onClick={(e) => { e.stopPropagation(); onExportRep && onExportRep(r.name); }}
+                <button onClick={(e) => { e.stopPropagation(); onExportRep && onExportRep(r.name, repType); }}
                         className="text-[10px] px-2 py-0.5 bg-slate-100 hover:bg-slate-900 hover:text-white rounded transition">📄 Print</button>
               </div>
             </div>
@@ -152,7 +166,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
               <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— top SKU groups</span></h3>
-              <div className="text-[10px] font-mono text-slate-500 small-caps">attributed via this rep's clients · click to open</div>
+              <div className="text-[10px] font-mono text-slate-500 small-caps">attributed via this {repType === 'sr' ? 'sales rep' : 'VMI rep'}'s clients · click to open</div>
             </div>
             <div className="max-h-[420px] overflow-auto">
               <table className="dt">
@@ -186,7 +200,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
 
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-              <h3 className="font-display text-[16px] font-semibold tracking-tight">Top Products to Pitch <span className="text-slate-400 italic">— in {sel.name}'s lead categories</span></h3>
+              <h3 className="font-display text-[16px] font-semibold tracking-tight">Top Products to Pitch <span className="text-slate-400 italic">— in {sel.name}'s lead categories ({repType === 'sr' ? 'sales rep' : 'VMI rep'})</span></h3>
               <div className="text-[10px] font-mono text-slate-500 small-caps">individual SKUs · global rank within rep's top categories</div>
             </div>
             <div className="max-h-[420px] overflow-auto">

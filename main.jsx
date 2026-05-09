@@ -122,8 +122,9 @@ function App() {
           {tab === 'reps' && (
             <div className="overflow-auto h-full">
               <RepsPanel a={analytics} onPickClient={setPickedClient} onPickSku={setPickedSku}
-                onExportRep={(rep) => {
-                  const ids = analytics.clients.filter(c => (c.sr||'Unassigned') === rep).map(c => c.i);
+                onExportRep={(rep, repType) => {
+                  const field = repType === 'vr' ? 'vr' : 'sr';
+                  const ids = analytics.clients.filter(c => (c[field]||'Unassigned') === rep).map(c => c.i);
                   exportCallSheetPrintable(analytics, ids);
                 }} />
             </div>
