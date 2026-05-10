@@ -175,7 +175,7 @@ function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, s
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Tag</span>
-          <TagChips options={['All','HIGH VALUE — CALL NOW','CROSS-SELL','CATEGORY EXPANSION','LOW PRIORITY','AT RISK']} value={storeTagFilter} onChange={setStoreTagFilter} counts={tagCounts} />
+          <TagChips options={['All','CALL NOW','CROSS-SELL','HIGH UPSIDE','LOW PRIORITY','AT RISK']} value={storeTagFilter} onChange={setStoreTagFilter} counts={tagCounts} />
         </div>
       </div>
       <div className="overflow-auto flex-1">

@@ -12,9 +12,9 @@ const TAG_STYLES = {
   'FIX':                {bg: 'rgba(234,88,12,.08)',  fg: '#9a3412', bd: '#fed7aa', dot: '#ea580c'},
   'CUT':                {bg: 'rgba(220,38,38,.08)',  fg: '#991b1b', bd: '#fecaca', dot: '#dc2626'},
   // Store tags
-  'HIGH VALUE — CALL NOW': {bg: 'linear-gradient(135deg,#059669,#047857)', fg: '#fff', bd: '#047857', dot: '#fff', shadow: true},
+  'CALL NOW': {bg: 'linear-gradient(135deg,#059669,#047857)', fg: '#fff', bd: '#047857', dot: '#fff', shadow: true},
   'CROSS-SELL':         {bg: 'rgba(217,119,6,.08)',  fg: '#b45309', bd: '#fde68a', dot: '#d97706'},
-  'CATEGORY EXPANSION': {bg: 'rgba(37,99,235,.08)',  fg: '#1d4ed8', bd: '#bfdbfe', dot: '#2563eb'},
+  'HIGH UPSIDE': {bg: 'rgba(37,99,235,.08)',  fg: '#1d4ed8', bd: '#bfdbfe', dot: '#2563eb'},
   'LOW PRIORITY':       {bg: 'rgba(107,114,128,.08)',fg: '#4b5563', bd: '#e5e7eb', dot: '#9ca3af'},
   'AT RISK':            {bg: 'rgba(220,38,38,.08)',  fg: '#991b1b', bd: '#fecaca', dot: '#dc2626'},
 };

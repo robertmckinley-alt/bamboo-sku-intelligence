@@ -113,7 +113,7 @@ function HowTo({a}) {
 
             <Subsection name="Retailers">
               <p>The store side of the same coin. Every retailer with their revenue, order count, SKU coverage, and a Store Opportunity score with one of five tags. Click a row to open the retailer detail panel with their missing top SKUs and a suggested order bundle.</p>
-              <Example use="I want a list of stores to call this week" do='Open Retailers → filter Tag = HIGH VALUE — CALL NOW → sort by Opportunity Score → the top 10 are your shortlist. Click each, scan the missing SKUs and suggested bundle, then export a combined call sheet from Bulk Call Sheet.' />
+              <Example use="I want a list of stores to call this week" do='Open Retailers → filter Tag = CALL NOW → sort by Opportunity Score → the top 10 are your shortlist. Click each, scan the missing SKUs and suggested bundle, then export a combined call sheet from Bulk Call Sheet.' />
             </Subsection>
 
             <Subsection name="Distribution Matrix">
@@ -192,9 +192,9 @@ function HowTo({a}) {
 
             <h3 className="text-stone-700 font-semibold text-[13px] mt-6 mb-2 uppercase tracking-wider">Store tags</h3>
             <div className="space-y-2 my-3">
-              <TagRow tag="HIGH VALUE — CALL NOW" def="High opportunity score AND high spend potential. Underweight a top customer." action="Call this week. They're the highest-leverage call on the board." />
+              <TagRow tag="CALL NOW" def="High opportunity score AND high spend potential. Underweight a top customer." action="Call this week. They're the highest-leverage call on the board." />
               <TagRow tag="CROSS-SELL"            def="Healthy account but missing several top-ranked SKUs they should logically carry." action="Pitch the missing top SKUs as add-ons during their next reorder." />
-              <TagRow tag="CATEGORY EXPANSION"    def="Buying from one or two categories only — clear category whitespace." action="Introduce them to the gap category with a small starter bundle." />
+              <TagRow tag="HIGH UPSIDE"    def="Buying from one or two categories only — clear category whitespace." action="Introduce them to the gap category with a small starter bundle." />
               <TagRow tag="LOW PRIORITY"          def="Already well covered or too small to move the needle this period." action="Quarterly check-in only. Don't waste reps' time chasing it." />
               <TagRow tag="AT RISK"               def="Order cadence has slipped vs their own baseline; they used to buy more." action="Service call before they churn. Find out what changed." />
             </div>

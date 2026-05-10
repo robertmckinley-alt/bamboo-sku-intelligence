@@ -243,9 +243,9 @@ function buildAnalytics(data, skuWeights, storeWeights) {
     const lowFreq = cl.orderFreq < benchmark.ordersPerMonth * 0.5;
     const declining = cl.ls && parseLastOrder(cl.ls, meta.endDate) > 30;
     if (declining) cl.storeTag = 'AT RISK';
-    else if (highOpp && highRev) cl.storeTag = 'HIGH VALUE — CALL NOW';
+    else if (highOpp && highRev) cl.storeTag = 'CALL NOW';
     else if (cl.missingTopCount >= 15 && cl.rev > 0) cl.storeTag = 'CROSS-SELL';
-    else if (cl.categoryGaps.length >= 3) cl.storeTag = 'CATEGORY EXPANSION';
+    else if (cl.categoryGaps.length >= 3) cl.storeTag = 'HIGH UPSIDE';
     else if (lowRev || lowFreq) cl.storeTag = 'LOW PRIORITY';
     else cl.storeTag = 'CROSS-SELL';
   }

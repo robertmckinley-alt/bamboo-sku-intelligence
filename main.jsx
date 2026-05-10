@@ -247,7 +247,7 @@ function TagSummary({a}) {
           </div>
         ))}
         <div className="text-[9px] uppercase text-slate-400 tracking-wider mt-2 px-1 small-caps">Retailers</div>
-        {['HIGH VALUE — CALL NOW','CROSS-SELL','CATEGORY EXPANSION','LOW PRIORITY','AT RISK'].map(t => (
+        {['CALL NOW','CROSS-SELL','HIGH UPSIDE','LOW PRIORITY','AT RISK'].map(t => (
           <div key={t} className="flex justify-between items-center px-1.5">
             <Tag tag={t} />
             <span className="font-mono tabular-nums text-[11px] font-semibold text-slate-700">{storeTags[t]||0}</span>
@@ -274,7 +274,7 @@ function BulkExport({a, onClose}) {
   const [mode, setMode] = useState('rep');
   const [rep, setRep] = useState('');
   const [repType, setRepType] = useState('sr'); // 'sr' = Sales Rep, 'vr' = VMI Rep
-  const [storeTag, setStoreTag] = useState('HIGH VALUE — CALL NOW');
+  const [storeTag, setStoreTag] = useState('CALL NOW');
   const [selected, setSelected] = useState(new Set());
   const reps = useMemo(
     () => [...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].sort(),
@@ -336,7 +336,7 @@ function BulkExport({a, onClose}) {
             <div>
               <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold small-caps">Store Tag</label>
               <select value={storeTag} onChange={e => setStoreTag(e.target.value)} className="block w-full mt-1 text-sm">
-                {['HIGH VALUE — CALL NOW','CROSS-SELL','CATEGORY EXPANSION','LOW PRIORITY','AT RISK'].map(t =>
+                {['CALL NOW','CROSS-SELL','HIGH UPSIDE','LOW PRIORITY','AT RISK'].map(t =>
                   <option key={t} value={t}>{t} ({a.clients.filter(c => c.storeTag===t).length})</option>)}
               </select>
             </div>

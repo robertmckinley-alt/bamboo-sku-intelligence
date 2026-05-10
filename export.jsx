@@ -109,9 +109,9 @@ function exportCallSheetPrintable(a, clientIds) {
 function sheetHtml(row, a) {
   const cl = row.client;
   const tagClass = {
-    'HIGH VALUE — CALL NOW': 'tag-call',
+    'CALL NOW': 'tag-call',
     'CROSS-SELL': 'tag-cross',
-    'CATEGORY EXPANSION': 'tag-cat',
+    'HIGH UPSIDE': 'tag-cat',
     'LOW PRIORITY': 'tag-low',
     'AT RISK': 'tag-risk',
   }[cl.storeTag] || 'tag-low';
@@ -173,7 +173,7 @@ function sheetHtml(row, a) {
 function buildTalkingPoints(cl, row, a) {
   const tps = [];
   const days = window.BambooCore.parseLastOrder(cl.ls, a.meta.endDate);
-  if (cl.storeTag === 'HIGH VALUE — CALL NOW') tps.push(`Top-tier account — score ${cl.oppScore.toFixed(0)}, missed revenue at ${fmt$(cl.missedRev)} this period.`);
+  if (cl.storeTag === 'CALL NOW') tps.push(`Top-tier account — score ${cl.oppScore.toFixed(0)}, missed revenue at ${fmt$(cl.missedRev)} this period.`);
   if (cl.storeTag === 'AT RISK') tps.push(`Last order was ${days} days ago — re-engage proactively.`);
   if (row.missing[0]) {
     const m = row.missing[0];

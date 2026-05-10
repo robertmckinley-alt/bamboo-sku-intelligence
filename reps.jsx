@@ -50,7 +50,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
       r.oppScoreSum += cl.oppScore || 0;
       r.clientIds.push(cl.i);
       if (cl.storeTag === 'AT RISK') r.atRisk += 1;
-      if (cl.storeTag === 'HIGH VALUE — CALL NOW') r.highValue += 1;
+      if (cl.storeTag === 'CALL NOW') r.highValue += 1;
     }
     const arr = [...map.values()];
     for (const r of arr) {

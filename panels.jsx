@@ -101,7 +101,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
   }, [nonCarriers, nonCarrySort]);
 
   const totalOpp = nonCarriers.reduce((s, x) => s + x.est, 0);
-  const highValMissing = nonCarriers.filter(x => x.client.storeTag === 'HIGH VALUE — CALL NOW' || x.client.oppScore >= 70);
+  const highValMissing = nonCarriers.filter(x => x.client.storeTag === 'CALL NOW' || x.client.oppScore >= 70);
   const highValOpp = highValMissing.reduce((s, x) => s + x.est, 0);
 
   const togglePipeline = (cid) => {
@@ -545,6 +545,67 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
         </div>
       </div>
 
+      {/* Category gaps */}
+      {cl.categoryGaps && cl.categoryGaps.length > 0 && (
+        <div className="border-b border-slate-200">
+          <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200">
+            <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps flex items-center gap-2">
+              Category gaps
+              <span className="text-slate-400 normal-case font-normal">— categories with zero coverage</span>
+              <span className="ml-auto text-rose-700 font-mono text-[12px]">{cl.categoryGaps.length} of {cl.catCount + cl.categoryGaps.length}</span>
+            </h3>
+          </div>
+          <div className="px-5 py-3 flex flex-wrap gap-1.5">
+            {cl.categoryGaps.map(c => (
+              <span key={c} className="pill" style={{background: 'rgba(220,38,38,.06)', color: '#991b1b', borderColor: '#fecaca'}}>
+                <span className="dot" style={{background: '#dc2626'}}></span>
+                {c}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Talking points */}
+      <div className="border-b border-slate-200" style={{background: 'linear-gradient(135deg, rgba(245,158,11,.05), white 60%)'}}>
+        <div className="px-5 py-2.5 border-b border-slate-200">
+          <h3 className="text-[11px] uppercase tracking-wider text-amber-800 font-semibold small-caps flex items-center gap-2">
+            Talking points
+            <span className="text-slate-400 normal-case font-normal">— short, data-backed sales notes</span>
+          </h3>
+        </div>
+        <div className="px-5 py-3">
+          <ul className="space-y-1.5 text-[12px] text-slate-800 leading-snug">
+            {(() => {
+              const tps = [];
+              const days = window.BambooCore.parseLastOrder(cl.ls, a.meta.endDate);
+              if (cl.storeTag === 'CALL NOW') tps.push(`Top-tier account — score ${cl.oppScore.toFixed(0)}, missed revenue at ${fmt$(cl.missedRev)} this period.`);
+              if (cl.storeTag === 'AT RISK') tps.push(`Last order was ${days} days ago — re-engage proactively.`);
+              if (bundle[0]) {
+                const m = bundle[0];
+                tps.push(`Lead with ${m.sku.n} (global rank #${m.sku.rank}) — suggested order ${m.suggestedUnits} units, ~${fmt$(m.est)} captured.`);
+              }
+              if (cl.categoryGaps.length > 0) {
+                tps.push(`Category gaps: ${cl.categoryGaps.slice(0,3).join(', ')}${cl.categoryGaps.length>3 ? ` + ${cl.categoryGaps.length-3} more` : ''} — bundle one starter SKU per category.`);
+              }
+              if (cl.skuPenetration < 0.15) tps.push(`SKU penetration only ${fmtPct(cl.skuPenetration,0)} — significant headroom in catalog breadth.`);
+              const networkAvgAov = a.meta.totalRevenue / a.clients.reduce((s,c) => s + c.o, 0);
+              if (cl.aov < networkAvgAov * 0.6) {
+                tps.push(`AOV (${fmt$(cl.aov)}) is below network average — pitch larger pack sizes / bundles to lift basket.`);
+              }
+              if (sortedCarrying[0]) tps.push(`Best mover: ${sortedCarrying[0].sku.n} at ${fmt$(sortedCarrying[0].r)} — confirm reorder cadence.`);
+              if (tps.length === 0) tps.push('Steady account — confirm fill rates and surface any new releases.');
+              return tps.map((t, i) => (
+                <li key={i} className="flex items-start gap-2">
+                  <span className="text-amber-600 font-mono text-[10px] mt-0.5 flex-shrink-0">▸</span>
+                  <span>{t}</span>
+                </li>
+              ));
+            })()}
+          </ul>
+        </div>
+      </div>
+
       {/* Currently carrying */}
       <div>
         <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center sticky" style={{top: 0, zIndex: 5}}>
@@ -799,7 +860,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
           <TagChips options={['All','SCALE','PUSH','MONITOR','FIX','CUT']} value={skuTagFilter} onChange={setSkuTagFilter} />
           <span className="h-4 w-px bg-slate-200 mx-1"></span>
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Store tag</span>
-          <TagChips options={['All','HIGH VALUE — CALL NOW','CROSS-SELL','CATEGORY EXPANSION','LOW PRIORITY','AT RISK']} value={storeTagFilter} onChange={setStoreTagFilter} />
+          <TagChips options={['All','CALL NOW','CROSS-SELL','HIGH UPSIDE','LOW PRIORITY','AT RISK']} value={storeTagFilter} onChange={setStoreTagFilter} />
         </div>
         <div className="flex items-center gap-3 text-[10px] text-slate-500 font-mono">
           <span>{skus.length} SKUs × {filteredClients.length} stores · {(skus.length * filteredClients.length).toLocaleString()} cells</span>
