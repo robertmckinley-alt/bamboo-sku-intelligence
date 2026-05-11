@@ -7,6 +7,7 @@ const { SkuDetail, RetailerDetail, DistributionMatrix, Buckets } = window.Bamboo
 const { CategoryLeaderboards } = window.BambooCategories;
 const { RepsPanel } = window.BambooReps;
 const { TopSkusPanel } = window.BambooTopSkus;
+const { ClosuresPanel } = window.BambooClosures;
 const { exportCallSheetCSV, exportCallSheetPrintable } = window.BambooExport;
 const { HowTo } = window.BambooHowTo;
 
@@ -58,7 +59,8 @@ function App() {
         if (e.key === '4') setTab('categories');
         if (e.key === '5') setTab('topskus');
         if (e.key === '6') setTab('reps');
-        if (e.key === '7') setTab('buckets');
+        if (e.key === '7') setTab('closures');
+        if (e.key === '8') setTab('buckets');
       }
     };
     window.addEventListener('keydown', onKey);
@@ -74,6 +76,7 @@ function App() {
     {id:'categories', label:'Categories'},
     {id:'topskus', label:'Top SKUs'},
     {id:'reps', label:'Reps'},
+    {id:'closures', label:'Closures'},
     {id:'buckets', label:'Buckets'},
     {id:'howto', label:'How to Use'},
   ];
@@ -130,6 +133,11 @@ function App() {
                   const ids = analytics.clients.filter(c => (c[field]||'Unassigned') === rep).map(c => c.i);
                   exportCallSheetPrintable(analytics, ids);
                 }} />
+            </div>
+          )}
+          {tab === 'closures' && (
+            <div className="overflow-auto h-full">
+              <ClosuresPanel />
             </div>
           )}
           {tab === 'buckets' && (
