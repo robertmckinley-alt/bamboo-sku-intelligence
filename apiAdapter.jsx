@@ -143,8 +143,8 @@
     for (let i = 0; i < ccs.row.length; i++) {
       matrix[i] = {
         c: ccs.row[i],
-        r: ccs.col[i],
-        s: c2d(ccs.revenue_cents[i]),
+        s: ccs.col[i],
+        r: c2d(ccs.revenue_cents[i]),
         u: ccs.units[i],
       };
     }
