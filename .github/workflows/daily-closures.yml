@@ -1,0 +1,58 @@
+name: Daily Closures Refresh
+
+# Runs once a day to fetch the live Bamboo API, detect new SKU placements
+# since yesterday's snapshot, and commit the new closures + snapshot back to
+# the repo. Vercel auto-redeploys from the commit so the live site stays in sync.
+
+on:
+  schedule:
+    # 14:00 UTC = 7am Pacific / 10am Eastern — runs after most reps have
+    # logged the previous day's orders.
+    - cron: '0 14 * * *'
+  # Allow manual triggering from the Actions tab for first-run bootstrap +
+  # ad-hoc refreshes.
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-closures
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          # Use the built-in token; permissions: contents:write above allows push.
+          persist-credentials: true
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch API + diff closures
+        run: python scripts/refresh_closures.py
+
+      - name: Commit changes if any
+        env:
+          AUTHOR_NAME:  "bamboo-closures-bot"
+          AUTHOR_EMAIL: "bamboo-closures-bot@users.noreply.github.com"
+        run: |
+          git config user.name  "$AUTHOR_NAME"
+          git config user.email "$AUTHOR_EMAIL"
+          git add data/closures.json data/api-snapshot.json
+          if git diff --quiet --cached; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          STAMP="$(date -u +'%Y-%m-%d')"
+          NEW_CLOSURES="$(python -c 'import json; d=json.load(open("data/closures.json")); from datetime import datetime, timezone; today=datetime.now(timezone.utc).date().isoformat(); print(sum(1 for c in d if c["ts"]==today))')"
+          git commit -m "Daily closures refresh — ${STAMP} (+${NEW_CLOSURES} closures today)"
+          git push
