@@ -36,51 +36,60 @@
   }
 
   function adapt(api) {
-    const reps       = api.dimensions.reps.rows;
-    const clientsD   = api.dimensions.clients.rows;
-    const productsD  = api.dimensions.products.rows;
-    const brandsD    = api.dimensions.brands.rows;
-    const perfCats   = api.dimensions.performance_categories.rows;
-    const retailCats = api.dimensions.retail_categories ? api.dimensions.retail_categories.rows : [];
+    const reps        = api.dimensions.reps.rows;
+    const clientsD    = api.dimensions.clients.rows;
+    const productsD   = api.dimensions.products.rows;
+    const brandsD     = api.dimensions.brands.rows;
+    const perfCats    = api.dimensions.performance_categories.rows;
+    const retailCats  = api.dimensions.retail_categories ? api.dimensions.retail_categories.rows : [];
 
     // Keep flags per dimension (true = kept, false = trade sample → removed)
     const keepPerf   = perfCats.map(r => !isTradeSample(r[1]));
     const keepRetail = retailCats.map(r => !isTradeSample(r[1]));
     const keepProd   = productsD.map(p => !isTradeSample(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
 
-    // Re-index surviving perf categories (SKUs)
+    // Re-index surviving perf categories (SKUs) + build name → new index lookup
     const skuRemap = new Map();
     const filteredPerfCats = [];
+    const perfNameToNewIdx = new Map();
     perfCats.forEach((row, oldI) => {
-      if (keepPerf[oldI]) { skuRemap.set(oldI, filteredPerfCats.length); filteredPerfCats.push(row); }
+      if (keepPerf[oldI]) {
+        const newI = filteredPerfCats.length;
+        skuRemap.set(oldI, newI);
+        filteredPerfCats.push(row);
+        // Last-wins for duplicate names — performance categories can have
+        // duplicate display names; this still gives us a valid SKU group for
+        // products bucketed under that retail-category name.
+        perfNameToNewIdx.set(row[1], newI);
+      }
     });
 
-    const startDate  = api.range.from;
-    const endDate    = api.range.to;
+    const startDate = api.range.from;
+    const endDate   = api.range.to;
     const periodDays = Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1;
-    const months     = +(periodDays / 30.4).toFixed(4);
+    const months = +(periodDays / 30.4).toFixed(4);
 
     const meta = {
       period: startDate + ' to ' + endDate,
       startDate, endDate, periodDays, months,
       totalRevenue: 0,
       totalUnits: 0,
-      totalClients:  clientsD.length,
-      totalSkus:     filteredPerfCats.length,
+      totalClients: clientsD.length,
+      totalSkus: filteredPerfCats.length,
       totalProducts: 0,
       totalMatrixRows: 0,
       generatedAt: api.generated_at,
       source: 'live',
     };
 
-    // Client-rep sales aggregate (no SKU filter possible here; whole-order totals)
+    // Client-rep sales aggregate (whole-order totals, not SKU-filtered)
     const crs = api.facts.client_rep_sales;
     const perClient = new Map();
     for (let i = 0; i < crs.row.length; i++) {
       const ci = crs.row[i];
       const acc = perClient.get(ci) || { o: 0, u: 0, rev: 0 };
-      acc.o   += crs.total_orders[i];
-      acc.u   += crs.units[i];
+      acc.o += crs.total_orders[i];
+      acc.u += crs.units[i];
       acc.rev += crs.revenue_cents[i];
       perClient.set(ci, acc);
     }
@@ -102,15 +111,21 @@
       const lastOrder = ls ? new Date(ls.replace(' ', 'T')) : null;
       const start = vs ? new Date(vs) : null;
       return {
-        i, n: name,
+        i,
+        n: name,
         sr: reps[fr] ? reps[fr][1] : '',
         vr: (vr != null && reps[vr]) ? reps[vr][1] : '',
-        pg: pg || '', dl: dl || '', lic: lic || '',
-        ls: ls ? ls.slice(0, 10) : '', vs: vs || '',
-        o: agg.o, u: agg.u, rev: c2d(agg.rev),
+        pg: pg || '',
+        dl: dl || '',
+        lic: lic || '',
+        ls: ls ? ls.slice(0, 10) : '',
+        vs: vs || '',
+        o: agg.o,
+        u: agg.u,
+        rev: c2d(agg.rev),
         sku: skusPerClient.get(i) ? skusPerClient.get(i).size : 0,
         aov: agg.o ? c2d(agg.rev) / agg.o : 0,
-        tenureDays:     start     ? Math.max(0, Math.round((today - start)     / 86400000)) : 0,
+        tenureDays: start ? Math.max(0, Math.round((today - start) / 86400000)) : 0,
         daysSinceOrder: lastOrder ? Math.max(0, Math.round((today - lastOrder) / 86400000)) : 9999,
         _isRevenue: !!isRev,
       };
@@ -127,36 +142,47 @@
       a.stores.add(ccs.row[i]);
       skuAgg.set(newK, a);
     }
+
     const skus = filteredPerfCats.map(([id, name], i) => {
       const a = skuAgg.get(i) || { rev: 0, u: 0, stores: new Set() };
       return {
-        i, n: name,
+        i,
+        n: name,
         c: inferTopCategory(name),
-        rev: c2d(a.rev), u: a.u, st: a.stores.size,
+        rev: c2d(a.rev),
+        u: a.u,
+        st: a.stores.size,
       };
     });
 
-    // Products (filtered)
+    // Products (filtered) — assign sg from retail-category name → perf-category new index
     const ps = api.facts.product_sales;
     const products = [];
     productsD.forEach((row, oldI) => {
       if (!keepProd[oldI]) return;
       const [id, name, bi, ci] = row;
+      const retailName = retailCats[ci] ? retailCats[ci][1] : '';
+      const sg = perfNameToNewIdx.has(retailName) ? perfNameToNewIdx.get(retailName) : 0;
       const rev = c2d(ps.revenue_cents[oldI] || 0);
       const u   = ps.units[oldI] || 0;
       products.push({
-        i: products.length, n: name,
+        i: products.length,
+        n: name,
         b: brandsD[bi] ? brandsD[bi][1] : '',
-        c: retailCats[ci] ? retailCats[ci][1] : (perfCats[ci] ? perfCats[ci][1] : ''),
+        c: retailName || (perfCats[ci] ? perfCats[ci][1] : ''),
         rev, u,
         vel: months > 0 ? rev / months : 0,
-        sg: 0, rkC: 0, rkG: 0,
+        sg,
+        rkC: 0, rkG: 0,
       });
     });
+
     const byCat = new Map();
     products.forEach(p => {
       const k = p.c || 'Other';
-      const arr = byCat.get(k) || []; arr.push(p); byCat.set(k, arr);
+      const arr = byCat.get(k) || [];
+      arr.push(p);
+      byCat.set(k, arr);
     });
     byCat.forEach(arr => arr.sort((a, b) => b.rev - a.rev).forEach((p, idx) => p.rkC = idx + 1));
     [...products].sort((a, b) => b.rev - a.rev).forEach((p, idx) => p.rkG = idx + 1);
