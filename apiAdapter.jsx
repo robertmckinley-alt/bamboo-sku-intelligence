@@ -14,6 +14,13 @@
   // so "CARTS" / "Tasts" are NOT matched.
   const TS_RE = /(trade\s*sample)|(^|[^A-Za-z0-9])TS([^A-Za-z0-9]|$)/i;
   const isTradeSample = (name) => TS_RE.test(name || '');
+  // Manually excluded SKU names (case-insensitive exact match) — removed from dataset entirely
+    const EXCLUDED_SKU_NAMES = new Set([
+          'dabstract live resin disposable pens - 1g',
+          'panda pen disposables 1g',
+        ]);
+    const isExcludedSku = (name) => EXCLUDED_SKU_NAMES.has(String(name || '').toLowerCase().trim());
+  
 
   function inferTopCategory(name) {
     const n = (name || '').toLowerCase();
@@ -44,9 +51,9 @@
     const retailCats  = api.dimensions.retail_categories ? api.dimensions.retail_categories.rows : [];
 
     // Keep flags per dimension (true = kept, false = trade sample → removed)
-    const keepPerf   = perfCats.map(r => !isTradeSample(r[1]));
-    const keepRetail = retailCats.map(r => !isTradeSample(r[1]));
-    const keepProd   = productsD.map(p => !isTradeSample(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
+        const keepPerf   = perfCats.map(r => !isTradeSample(r[1]) && !isExcludedSku(r[1]));
+        const keepRetail = retailCats.map(r => !isTradeSample(r[1]) && !isExcludedSku(r[1]));
+        const keepProd   = productsD.map(p => !isTradeSample(p[1]) && !isExcludedSku(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
 
     // Re-index surviving perf categories (SKUs) + build name → new index lookup
     const skuRemap = new Map();
