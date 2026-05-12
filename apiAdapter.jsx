@@ -34,6 +34,7 @@
     const productsD = api.dimensions.products.rows;
     const brandsD   = api.dimensions.brands.rows;
     const perfCats  = api.dimensions.performance_categories.rows;
+        const retailCats = api.dimensions.retail_categories ? api.dimensions.retail_categories.rows : [];
 
     const startDate = api.range.from;
     const endDate   = api.range.to;
@@ -125,7 +126,7 @@
       return {
         i, n: name,
         b: brandsD[bi] ? brandsD[bi][1] : '',
-        c: perfCats[ci] ? perfCats[ci][1] : '',
+      c: retailCats[ci] ? retailCats[ci][1] : (perfCats[ci] ? perfCats[ci][1] : ''),
         rev, u,
         vel: months > 0 ? rev / months : 0,
         sg: 0, rkC: 0, rkG: 0,
