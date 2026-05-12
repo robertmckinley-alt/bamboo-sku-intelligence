@@ -76,7 +76,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
   const carriedSet = useMemo(() => new Set(((a.bySku.get(skuId) || []).filter(([c,r,u]) => r > 0).map(([c]) => c))), [a, skuId]);
   const nonCarriers = useMemo(() => {
     let list = a.clients.filter(c => !carriedSet.has(c.i));
-    if (repClientSet) list = list.filter(c => repClientSet.has(c.i));
+    // Note: non-carriers are GLOBAL (all 51 missing stores) regardless of rep scope, so reps can see every uncovered store
     const avgRevPerStore = a.meta.totalRevenue / a.clients.length;
     return list.map(c => {
       const sizeFactor = Math.min(2, Math.max(0.2, c.rev / Math.max(1, avgRevPerStore)));
