@@ -229,8 +229,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
                   </td>
                   <td className="truncate max-w-[180px]" onClick={() => onPickClient(client.i)}>
                     <div>{client.n}</div>
-                    <div className="text-[9px] text-slate-400 -mt-0.5"><Tag tag={client.storeTag} size="sm"/></div>
-                  </td>
+</td>
                   <td className="text-right tabular-nums font-mono" onClick={() => onPickClient(client.i)}>{client.oppScore.toFixed(0)}</td>
                   <td className="text-right tabular-nums font-mono text-slate-500" onClick={() => onPickClient(client.i)}>{fmt$(client.rev)}</td>
                   <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold" onClick={() => onPickClient(client.i)}>{fmt$(est)}</td>
@@ -420,8 +419,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
       <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-4 flex items-start gap-3 z-10">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <Tag tag={cl.storeTag} size="lg" />
-            <span className="text-[11px] font-mono text-slate-500">License {cl.lic || '—'}</span>
+                        <span className="text-[11px] font-mono text-slate-500">License {cl.lic || '—'}</span>
             {days < 999 && <span className="text-[11px] font-mono text-slate-500">· last order {days}d ago</span>}
             <span className="text-[11px] font-mono text-slate-500">· opp score {cl.oppScore.toFixed(0)}</span>
           </div>
