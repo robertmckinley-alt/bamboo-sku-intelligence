@@ -16,10 +16,23 @@ function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
-      .then(r => r.json())
-      .then(setData)
-      .catch(e => setError(String(e)));
+    const useLive = window.BambooApiAdapter && typeof window.BambooApiAdapter.loadLiveDataset === 'function';
+    if (useLive) {
+      window.BambooApiAdapter.loadLiveDataset()
+        .then(setData)
+        .catch(e => {
+          console.warn('Live API failed, falling back to static dataset:', e);
+          fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
+            .then(r => r.json())
+            .then(setData)
+            .catch(err => setError(String(err)));
+        });
+    } else {
+      fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
+        .then(r => r.json())
+        .then(setData)
+        .catch(e => setError(String(e)));
+    }
   }, []);
 
   // Persisted state
