@@ -6,7 +6,14 @@
 
 (function () {
   const API_URL = 'https://api-intelligence.getbamboo.com/api/reports';
+
   const c2d = (cents) => Math.round(cents) / 100;
+
+  // Trade-sample filter: matches "trade sample" anywhere (case-insensitive)
+  // OR a word-bounded "TS" token. Word boundary uses non-letter/digit chars
+  // so "CARTS" / "Tasts" are NOT matched.
+  const TS_RE = /(trade\s*sample)|(^|[^A-Za-z0-9])TS([^A-Za-z0-9]|$)/i;
+  const isTradeSample = (name) => TS_RE.test(name || '');
 
   function inferTopCategory(name) {
     const n = (name || '').toLowerCase();
@@ -29,30 +36,44 @@
   }
 
   function adapt(api) {
-    const reps      = api.dimensions.reps.rows;
-    const clientsD  = api.dimensions.clients.rows;
-    const productsD = api.dimensions.products.rows;
-    const brandsD   = api.dimensions.brands.rows;
-    const perfCats  = api.dimensions.performance_categories.rows;
-        const retailCats = api.dimensions.retail_categories ? api.dimensions.retail_categories.rows : [];
+    const reps       = api.dimensions.reps.rows;
+    const clientsD   = api.dimensions.clients.rows;
+    const productsD  = api.dimensions.products.rows;
+    const brandsD    = api.dimensions.brands.rows;
+    const perfCats   = api.dimensions.performance_categories.rows;
+    const retailCats = api.dimensions.retail_categories ? api.dimensions.retail_categories.rows : [];
 
-    const startDate = api.range.from;
-    const endDate   = api.range.to;
+    // Keep flags per dimension (true = kept, false = trade sample → removed)
+    const keepPerf   = perfCats.map(r => !isTradeSample(r[1]));
+    const keepRetail = retailCats.map(r => !isTradeSample(r[1]));
+    const keepProd   = productsD.map(p => !isTradeSample(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
+
+    // Re-index surviving perf categories (SKUs)
+    const skuRemap = new Map();
+    const filteredPerfCats = [];
+    perfCats.forEach((row, oldI) => {
+      if (keepPerf[oldI]) { skuRemap.set(oldI, filteredPerfCats.length); filteredPerfCats.push(row); }
+    });
+
+    const startDate  = api.range.from;
+    const endDate    = api.range.to;
     const periodDays = Math.round((new Date(endDate) - new Date(startDate)) / 86400000) + 1;
-    const months = +(periodDays / 30.4).toFixed(4);
+    const months     = +(periodDays / 30.4).toFixed(4);
+
     const meta = {
       period: startDate + ' to ' + endDate,
       startDate, endDate, periodDays, months,
-      totalRevenue:    c2d(api.summaries.totals.revenue_cents),
-      totalUnits:      api.summaries.totals.units,
-      totalClients:    clientsD.length,
-      totalSkus:       perfCats.length,
-      totalProducts:   productsD.length,
+      totalRevenue: 0,
+      totalUnits: 0,
+      totalClients:  clientsD.length,
+      totalSkus:     filteredPerfCats.length,
+      totalProducts: 0,
       totalMatrixRows: 0,
-      generatedAt:     api.generated_at,
-      source:          'live',
+      generatedAt: api.generated_at,
+      source: 'live',
     };
 
+    // Client-rep sales aggregate (no SKU filter possible here; whole-order totals)
     const crs = api.facts.client_rep_sales;
     const perClient = new Map();
     for (let i = 0; i < crs.row.length; i++) {
@@ -67,10 +88,11 @@
     const ccs = api.facts.category_client_sales;
     const skusPerClient = new Map();
     for (let i = 0; i < ccs.row.length; i++) {
+      if (!keepPerf[ccs.col[i]]) continue;
       const ci = ccs.row[i];
       let s = skusPerClient.get(ci);
       if (!s) { s = new Set(); skusPerClient.set(ci, s); }
-      s.add(ccs.col[i]);
+      s.add(skuRemap.get(ccs.col[i]));
     }
 
     const today = new Date(api.generated_at);
@@ -83,14 +105,9 @@
         i, n: name,
         sr: reps[fr] ? reps[fr][1] : '',
         vr: (vr != null && reps[vr]) ? reps[vr][1] : '',
-        pg:  pg  || '',
-        dl:  dl  || '',
-        lic: lic || '',
-        ls:  ls  ? ls.slice(0, 10) : '',
-        vs:  vs  || '',
-        o:   agg.o,
-        u:   agg.u,
-        rev: c2d(agg.rev),
+        pg: pg || '', dl: dl || '', lic: lic || '',
+        ls: ls ? ls.slice(0, 10) : '', vs: vs || '',
+        o: agg.o, u: agg.u, rev: c2d(agg.rev),
         sku: skusPerClient.get(i) ? skusPerClient.get(i).size : 0,
         aov: agg.o ? c2d(agg.rev) / agg.o : 0,
         tenureDays:     start     ? Math.max(0, Math.round((today - start)     / 86400000)) : 0,
@@ -99,38 +116,42 @@
       };
     });
 
+    // SKU revenue/units/stores aggregates (re-indexed)
     const skuAgg = new Map();
     for (let i = 0; i < ccs.col.length; i++) {
-      const k = ccs.col[i];
-      const a = skuAgg.get(k) || { rev: 0, u: 0, stores: new Set() };
+      if (!keepPerf[ccs.col[i]]) continue;
+      const newK = skuRemap.get(ccs.col[i]);
+      const a = skuAgg.get(newK) || { rev: 0, u: 0, stores: new Set() };
       a.rev += ccs.revenue_cents[i];
       a.u   += ccs.units[i];
       a.stores.add(ccs.row[i]);
-      skuAgg.set(k, a);
+      skuAgg.set(newK, a);
     }
-    const skus = perfCats.map(([id, name], i) => {
+    const skus = filteredPerfCats.map(([id, name], i) => {
       const a = skuAgg.get(i) || { rev: 0, u: 0, stores: new Set() };
       return {
         i, n: name,
         c: inferTopCategory(name),
-        rev: c2d(a.rev),
-        u: a.u,
-        st: a.stores.size,
+        rev: c2d(a.rev), u: a.u, st: a.stores.size,
       };
     });
 
+    // Products (filtered)
     const ps = api.facts.product_sales;
-    const products = productsD.map(([id, name, bi, ci], i) => {
-      const rev = c2d(ps.revenue_cents[i] || 0);
-      const u   = ps.units[i] || 0;
-      return {
-        i, n: name,
+    const products = [];
+    productsD.forEach((row, oldI) => {
+      if (!keepProd[oldI]) return;
+      const [id, name, bi, ci] = row;
+      const rev = c2d(ps.revenue_cents[oldI] || 0);
+      const u   = ps.units[oldI] || 0;
+      products.push({
+        i: products.length, n: name,
         b: brandsD[bi] ? brandsD[bi][1] : '',
-      c: retailCats[ci] ? retailCats[ci][1] : (perfCats[ci] ? perfCats[ci][1] : ''),
+        c: retailCats[ci] ? retailCats[ci][1] : (perfCats[ci] ? perfCats[ci][1] : ''),
         rev, u,
         vel: months > 0 ? rev / months : 0,
         sg: 0, rkC: 0, rkG: 0,
-      };
+      });
     });
     const byCat = new Map();
     products.forEach(p => {
@@ -139,16 +160,24 @@
     });
     byCat.forEach(arr => arr.sort((a, b) => b.rev - a.rev).forEach((p, idx) => p.rkC = idx + 1));
     [...products].sort((a, b) => b.rev - a.rev).forEach((p, idx) => p.rkG = idx + 1);
+    meta.totalProducts = products.length;
 
-    const matrix = new Array(ccs.row.length);
+    // Matrix (filtered + remapped)
+    const matrix = [];
+    let totalRev = 0, totalU = 0;
     for (let i = 0; i < ccs.row.length; i++) {
-      matrix[i] = {
+      if (!keepPerf[ccs.col[i]]) continue;
+      matrix.push({
         c: ccs.row[i],
-        s: ccs.col[i],
+        s: skuRemap.get(ccs.col[i]),
         r: c2d(ccs.revenue_cents[i]),
         u: ccs.units[i],
-      };
+      });
+      totalRev += ccs.revenue_cents[i];
+      totalU   += ccs.units[i];
     }
+    meta.totalRevenue    = c2d(totalRev);
+    meta.totalUnits      = totalU;
     meta.totalMatrixRows = matrix.length;
 
     return { meta, skus, clients, products, matrix };
