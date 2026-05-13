@@ -242,7 +242,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
 
       <div className="grid grid-cols-2 divide-x divide-slate-200">
         <div className="overflow-hidden">
-          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between sticky" style={{top: pipelineIds.size?142:84, zIndex:7}}>
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between">
             <span>Carrying ({sortedCarriers.length}{sortedCarriers.length !== carriers.length ? ` of ${carriers.length}` : ''})</span>
             <span className="font-mono text-slate-700">{fmt$(sku.rev)}</span>
           </div>
@@ -277,7 +277,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
           </table>
         </div>
         <div className="overflow-hidden">
-          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between items-center sticky" style={{top: pipelineIds.size?142:84, zIndex:7}}>
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between items-center">
             <span>NOT carrying ({sortedNonCarriers.length}{sortedNonCarriers.length !== nonCarriers.length ? ` of ${nonCarriers.length}` : ''})</span>
             <span className="font-mono text-emerald-700">opp {fmt$(totalOpp)}</span>
           </div>
