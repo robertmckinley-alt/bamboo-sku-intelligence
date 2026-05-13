@@ -111,16 +111,38 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
     return {topSkus, cats, carrying};
   }, [sel, a]);
 
-  // For the selected rep — top individual products in their leading categories
-  // (global ranking, not per-rep attribution; we don't have product × client data)
+  // For the selected rep — top 25 VOIDS across their store base.
+  // A "void" = an individual product whose SKU group is NOT carried anywhere in
+  // this rep's book. Sorted by global revenue (= highest-priority pitches first).
+  const repProductSort = useState({key: 'rev', dir: 'desc'});
+  const [productSort, setProductSort] = repProductSort;
   const repProducts = useMemo(() => {
     if (!sel || !repBook) return [];
-    const topCats = new Set(repBook.cats.slice(0, 4).map(c => c.cat));
-    return (a.products || [])
-      .filter(p => topCats.has(p.c))
-      .sort((x, y) => y.rev - x.rev)
-      .slice(0, 25);
-  }, [sel, repBook, a.products]);
+    // Missing-from-this-rep SKU group ids
+    const allGroupIds = new Set((a.skus || []).map(s => s.i));
+    const missingGroups = new Set();
+    for (const g of allGroupIds) if (!repBook.carrying.has(g)) missingGroups.add(g);
+    let arr = (a.products || []).filter(p => missingGroups.has(p.sg));
+    const k = productSort.key, m = productSort.dir === 'asc' ? 1 : -1;
+    arr.sort((x, y) => {
+      const xv = x[k], yv = y[k];
+      if (typeof xv === 'string') return (xv || '').localeCompare(yv || '') * m;
+      return ((xv ?? 0) - (yv ?? 0)) * m;
+    });
+    return arr.slice(0, 25);
+  }, [sel, repBook, a.products, a.skus, productSort]);
+
+  // Helper for the void table header — sortable click w/ arrow indicator.
+  const ProdTh = ({k, label, align='left', hint}) => (
+    <th className={`sortable ${align==='right'?'text-right':'text-left'}`} title={hint}
+        onClick={() => setProductSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}))}>
+      <span className="inline-flex items-center gap-1">{label}
+        <span className={`text-[8px] ${productSort.key===k?'text-slate-700':'text-slate-300'}`}>
+          {productSort.key===k ? (productSort.dir==='asc'?'▲':'▼') : '▴▾'}
+        </span>
+      </span>
+    </th>
+  );
 
   const maxRev = reps[0]?.revenue || 1;
 
@@ -220,41 +242,56 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
 
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-              <h3 className="font-display text-[16px] font-semibold tracking-tight">Top Products to Pitch <span className="text-slate-400 italic">— in {sel.name}'s lead categories ({repType === 'sr' ? 'sales rep' : 'VMI rep'})</span></h3>
-              <div className="text-[10px] font-mono text-slate-500 small-caps">individual SKUs · global rank within rep's top categories</div>
+              <h3 className="font-display text-[16px] font-semibold tracking-tight">Top 25 Voids <span className="text-slate-400 italic">— across {sel.name}'s store base ({repType === 'sr' ? 'sales rep' : 'VMI rep'})</span></h3>
+              <div className="text-[10px] font-mono text-slate-500 small-caps">individual SKUs whose SKU group is NOT carried by any of this rep's stores · click column to sort · click row to open the SKU drawer</div>
             </div>
             <div className="max-h-[420px] overflow-auto">
               <table className="dt">
                 <thead>
                   <tr>
                     <th className="text-right" style={{width: 36}}>#</th>
-                    <th>Product</th>
-                    <th>Brand</th>
+                    <ProdTh k="n" label="Product" />
+                    <ProdTh k="b" label="Brand" />
                     <th>SKU Group</th>
-                    <th>Category</th>
-                    <th className="text-right">Revenue</th>
-                    <th className="text-right">Units</th>
+                    <ProdTh k="c" label="Category" />
+                    <ProdTh k="rev" label="Revenue" align="right" />
+                    <th className="text-right" style={{width: 90}}>Share</th>
+                    <ProdTh k="u" label="Units" align="right" />
+                    <ProdTh k="vel" label="Vel / mo" align="right" hint="Units per month" />
                   </tr>
                 </thead>
                 <tbody>
-                  {repProducts.map((p, i) => {
-                    const groupName = a.skuById.get(p.sg)?.n || '—';
-                    const carried = repBook.carrying.has(p.sg);
-                    return (
-                      <tr key={p.i} onClick={() => onPickSku && onPickSku(p.sg, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
-                        <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
-                        <td className="truncate max-w-[220px]" title={p.n}>
-                          {p.n}
-                          {!carried && <span className="ml-1.5 text-[9px] font-mono text-amber-600 small-caps">opp</span>}
-                        </td>
-                        <td className="text-slate-600">{p.b || <span className="text-slate-300">—</span>}</td>
-                        <td className="truncate max-w-[160px] text-slate-500" title={groupName}>{groupName}</td>
-                        <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{p.c}</span></td>
-                        <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(p.rev)}</td>
-                        <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
-                      </tr>
-                    );
-                  })}
+                  {(() => {
+                    const maxRevP = Math.max(1, ...repProducts.map(p => p.rev || 0));
+                    const totalShown = repProducts.reduce((s, p) => s + (p.rev || 0), 0);
+                    return repProducts.map((p, i) => {
+                      const groupName = a.skuById.get(p.sg)?.n || '—';
+                      const sharePct = totalShown > 0 ? (p.rev / totalShown) : 0;
+                      return (
+                        <tr key={p.i} onClick={() => onPickSku && onPickSku(p.sg, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
+                          <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                          <td className="truncate max-w-[260px]" title={p.n}>{p.n}</td>
+                          <td className="text-slate-600">{p.b || <span className="text-slate-300">—</span>}</td>
+                          <td className="truncate max-w-[160px] text-slate-500" title={groupName}>{groupName}</td>
+                          <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{p.c}</span></td>
+                          <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(p.rev)}</td>
+                          <td className="text-right">
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-slate-100">
+                                <div className="h-full" style={{width: ((p.rev/maxRevP)*100)+'%', background: 'linear-gradient(90deg,#34d399,#047857)'}}></div>
+                              </div>
+                              <span className="font-mono tabular-nums text-[10px] text-slate-600 w-9 text-right">{fmtPct(sharePct, 1)}</span>
+                            </div>
+                          </td>
+                          <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
+                          <td className="text-right tabular-nums font-mono text-slate-500">{fmtNum(p.vel || 0, 0)}</td>
+                        </tr>
+                      );
+                    });
+                  })()}
+                  {repProducts.length === 0 && (
+                    <tr><td colSpan={9} className="text-center text-[11px] text-slate-400 py-6">No voids — this rep's stores carry every SKU group.</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
