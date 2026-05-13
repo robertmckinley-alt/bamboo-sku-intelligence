@@ -15,7 +15,7 @@ const { Tag } = window.BambooUI;
 // This tab loads closures.json, filters by date range / rep /
 // search, and exports CSV for reporting up the chain.
 
-function ClosuresPanel() {
+function ClosuresPanel({a}) {
   const [closures, setClosures] = useState(null);
   const [error, setError] = useState(null);
 
@@ -54,12 +54,37 @@ function ClosuresPanel() {
     return ['0000-01-01', '9999-12-31'];
   }, [range, customFrom, customTo]);
 
+  // Build the rep dropdown from the LIVE analytics roster (all reps, even those
+  // with no closures yet) PLUS any names that show up in historical closures
+  // (covering reps who left but have past attribution).
   const repOptions = useMemo(() => {
-    if (!closures) return ['All'];
     const s = new Set();
-    for (const c of closures) s.add(c[repType] || 'Unassigned');
+    if (a && a.clients) {
+      for (const cl of a.clients) {
+        const k = cl[repType] || 'Unassigned';
+        if (k) s.add(k);
+      }
+    }
+    if (closures) {
+      for (const c of closures) {
+        const k = c[repType] || 'Unassigned';
+        if (k) s.add(k);
+      }
+    }
     return ['All', ...[...s].sort()];
-  }, [closures, repType]);
+  }, [closures, repType, a]);
+
+  // Lookup: rep name -> number of stores assigned today (for the dropdown counts)
+  const repStoreCounts = useMemo(() => {
+    const out = {};
+    if (a && a.clients) {
+      for (const cl of a.clients) {
+        const k = cl[repType] || 'Unassigned';
+        out[k] = (out[k] || 0) + 1;
+      }
+    }
+    return out;
+  }, [a, repType]);
 
   React.useEffect(() => { setRepFilter('All'); }, [repType]);
 
@@ -147,8 +172,8 @@ function ClosuresPanel() {
             <h2 className="font-display text-[18px] font-semibold tracking-tight">Void Closures <span className="italic text-emerald-700">— new SKU placements</span></h2>
             <div className="text-[10px] font-mono text-slate-500 small-caps mt-0.5">
               {empty
-                ? 'no closures recorded yet — daily refresh will populate this list'
-                : `${fmtN(closures.length)} total closures recorded · ${fmtN(filtered.length)} in current view`}
+                ? `no closures recorded yet — ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster · daily refresh will populate this list`
+                : `${fmtN(closures.length)} total closures recorded · ${fmtN(filtered.length)} in current view · ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster`}
             </div>
           </div>
           <button onClick={exportCsv} disabled={filtered.length === 0}
@@ -185,8 +210,12 @@ function ClosuresPanel() {
                         className={`px-2 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
               ))}
             </div>
-            <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-[11px]" style={{maxWidth: 220}}>
-              {repOptions.map(r => <option key={r} value={r}>{r === 'All' ? (repType==='sr'?'All sales reps':'All VMI reps') : r}</option>)}
+            <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-[11px]" style={{maxWidth: 260}}>
+              {repOptions.map(r => {
+                if (r === 'All') return <option key={r} value={r}>{repType==='sr'?'All sales reps':'All VMI reps'} ({fmtN(repOptions.length - 1)})</option>;
+                const cnt = repStoreCounts[r];
+                return <option key={r} value={r}>{r}{cnt ? ` — ${cnt} stores` : ''}</option>;
+              })}
             </select>
             <input type="search" placeholder="Search store, SKU, or category…"
                    value={search} onChange={e => setSearch(e.target.value)}
@@ -278,24 +307,32 @@ function ClosuresPanel() {
               </h3>
             </div>
             <div className="divide-y divide-slate-100 max-h-[70vh] overflow-auto">
-              {repSummary.map(r => {
-                const sel = repFilter === r.name;
-                return (
-                  <button key={r.name} onClick={() => setRepFilter(sel ? 'All' : r.name)}
-                          className={`w-full text-left px-3 py-2 transition ${sel ? 'bg-emerald-50' : 'hover:bg-slate-50'}`}>
-                    <div className="flex items-baseline justify-between mb-1">
-                      <span className={`text-[12px] font-semibold ${sel ? 'text-emerald-900' : 'text-slate-800'}`}>{r.name}</span>
-                      <span className="font-mono tabular-nums text-[11px] text-slate-700">{r.count}</span>
-                    </div>
-                    <div className="text-[10px] font-mono text-slate-500 tabular-nums">
-                      {fmt$(r.rev)} · {r.stores} stores · {r.skus} skus
-                    </div>
-                  </button>
-                );
-              })}
-              {repSummary.length === 0 && (
-                <div className="p-4 text-[11px] text-slate-400">No closures in this range.</div>
-              )}
+              {/* Merge analytics roster with closure-derived summary so reps with 0 closures still appear */}
+              {(() => {
+                const have = new Set(repSummary.map(r => r.name));
+                const padded = [...repSummary];
+                for (const name of repOptions) {
+                  if (name === 'All') continue;
+                  if (!have.has(name)) padded.push({name, count: 0, rev: 0, stores: 0, skus: 0, _empty: true});
+                }
+                padded.sort((x, y) => y.rev - x.rev || x.name.localeCompare(y.name));
+                if (padded.length === 0) return <div className="p-4 text-[11px] text-slate-400">No reps in roster.</div>;
+                return padded.map(r => {
+                  const sel = repFilter === r.name;
+                  return (
+                    <button key={r.name} onClick={() => setRepFilter(sel ? 'All' : r.name)}
+                            className={`w-full text-left px-3 py-2 transition ${sel ? 'bg-emerald-50' : 'hover:bg-slate-50'} ${r._empty ? 'opacity-60' : ''}`}>
+                      <div className="flex items-baseline justify-between mb-1">
+                        <span className={`text-[12px] font-semibold ${sel ? 'text-emerald-900' : 'text-slate-800'}`}>{r.name}</span>
+                        <span className="font-mono tabular-nums text-[11px] text-slate-700">{r.count}</span>
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500 tabular-nums">
+                        {r._empty ? <span className="text-slate-400">no closures in range · {repStoreCounts[r.name] || 0} stores</span> : <>{fmt$(r.rev)} · {r.stores} stores · {r.skus} skus</>}
+                      </div>
+                    </button>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
