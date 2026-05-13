@@ -319,7 +319,6 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                   <tr>
                     <th className="text-right" style={{width: 36}}>#</th>
                     <th>Store</th>
-                    <th>Tag</th>
                     <th className="text-right">Opp score</th>
                     <th className="text-right">Revenue</th>
                     <th className="text-right">Missed $</th>
@@ -336,7 +335,6 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                       <tr key={c.i} onClick={() => onPickClient && onPickClient(c.i)} className="cursor-pointer">
                         <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                         <td className="truncate max-w-[260px]" title={c.n}>{c.n}</td>
-                        <td>{c.storeTag && <span className={`pill ${tagColor(c.storeTag)}`}>{c.storeTag}</span>}</td>
                         <td className="text-right tabular-nums font-mono">{(c.oppScore || 0).toFixed(0)}</td>
                         <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(c.rev)}</td>
                         <td className="text-right tabular-nums font-mono text-rose-700">{fmt$(c.missedRev || 0)}</td>
