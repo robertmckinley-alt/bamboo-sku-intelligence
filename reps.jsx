@@ -24,8 +24,14 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
   // 'sr' = Sales Rep (default), 'vr' = VMI Rep
   const [repType, setRepType] = useState('sr');
   const [storeTagFilter, setStoreTagFilter] = useState('');  // empty = show all; otherwise a tag name
-  // Reset the tag filter when switching reps so a stale filter doesn't hide everything.
-  React.useEffect(() => { setStoreTagFilter(''); }, [selected, repType]);
+  // Min/max range filters for each numeric column on the high-priority stores table.
+  // Empty string = no bound.
+  const emptyRanges = { oppMin:'', oppMax:'', revMin:'', revMax:'', missMin:'', missMax:'', daysMin:'', daysMax:'', skuMin:'', skuMax:'' };
+  const [ranges, setRanges] = useState(emptyRanges);
+  const setRange = (k, v) => setRanges(r => ({...r, [k]: v}));
+  const clearRanges = () => setRanges(emptyRanges);
+  // Reset the tag filter + ranges when switching reps so a stale filter doesn't hide everything.
+  React.useEffect(() => { setStoreTagFilter(''); setRanges(emptyRanges); }, [selected, repType]);
   const drilldownRef = React.useRef(null);
 
   // When a rep is picked, scroll the drilldown (store list etc.) into view.
@@ -266,9 +272,20 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
         const atRisk   = repClients.filter(c => c.storeTag === 'AT RISK');
         const highUp   = repClients.filter(c => c.storeTag === 'HIGH UPSIDE');
         const crossSell= repClients.filter(c => c.storeTag === 'CROSS-SELL');
+        // Range helpers — empty string = no bound
+        const gte = (v, s) => s === '' ? true : v >= parseFloat(s);
+        const lte = (v, s) => s === '' ? true : v <= parseFloat(s);
+        const passesRange = (c) => (
+          gte(c.oppScore || 0,        ranges.oppMin)  && lte(c.oppScore || 0,        ranges.oppMax)  &&
+          gte(c.rev || 0,             ranges.revMin)  && lte(c.rev || 0,             ranges.revMax)  &&
+          gte(c.missedRev || 0,       ranges.missMin) && lte(c.missedRev || 0,       ranges.missMax) &&
+          gte(c.daysSinceOrder ?? 9999, ranges.daysMin) && lte(c.daysSinceOrder ?? 9999, ranges.daysMax) &&
+          gte(c.skusCarried || 0,     ranges.skuMin)  && lte(c.skusCarried || 0,     ranges.skuMax)
+        );
         const top      = (storeTagFilter
-                          ? repClients.filter(c => c.storeTag === storeTagFilter)
-                          : repClients);
+                          ? repClients.filter(c => c.storeTag === storeTagFilter && passesRange(c))
+                          : repClients.filter(passesRange));
+        const anyRange = Object.values(ranges).some(v => v !== '');
 
         const tagColor = (t) => {
           if (t === 'CALL NOW') return 'bg-emerald-600 text-white';
@@ -283,7 +300,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-baseline justify-between gap-3 flex-wrap">
               <div>
                 <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— high-priority stores</span></h3>
-                <div className="text-[10px] font-mono text-slate-500 small-caps">{top.length}{top.length !== repClients.length ? ` of ${repClients.length}` : ''} stores{storeTagFilter ? ` · filtered to ${storeTagFilter}` : ''} · sorted by opportunity score</div>
+                <div className="text-[10px] font-mono text-slate-500 small-caps">{top.length}{top.length !== repClients.length ? ` of ${repClients.length}` : ''} stores{storeTagFilter ? ` · ${storeTagFilter}` : ''}{anyRange ? ' · ranges applied' : ''} · sorted by opp</div>
               </div>
               <div className="flex items-center gap-2 text-[10px] font-mono flex-wrap">
                 {(() => {
@@ -314,6 +331,30 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
               </div>
             </div>
             <div className="max-h-[480px] overflow-auto">
+              <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex items-center gap-3 flex-wrap text-[10px] font-mono">
+                <span className="uppercase tracking-wider text-slate-500 font-semibold">Min/Max:</span>
+                {[
+                  ['Opp',    'oppMin',  'oppMax',  '0-100'],
+                  ['Rev $',  'revMin',  'revMax',  '$'],
+                  ['Miss $', 'missMin', 'missMax', '$'],
+                  ['Days',   'daysMin', 'daysMax', 'd'],
+                  ['SKUs',   'skuMin',  'skuMax',  '#'],
+                ].map(([label, kMin, kMax, hint]) => (
+                  <span key={kMin} className="inline-flex items-center gap-1">
+                    <span className="text-slate-600">{label}</span>
+                    <input type="number" placeholder="min" value={ranges[kMin]} onChange={e => setRange(kMin, e.target.value)}
+                           className="text-[10px] w-14 py-0.5 px-1.5" title={`Minimum ${label} (${hint})`} />
+                    <span className="text-slate-300">–</span>
+                    <input type="number" placeholder="max" value={ranges[kMax]} onChange={e => setRange(kMax, e.target.value)}
+                           className="text-[10px] w-14 py-0.5 px-1.5" title={`Maximum ${label} (${hint})`} />
+                  </span>
+                ))}
+                {anyRange && (
+                  <button onClick={clearRanges} className="text-slate-500 hover:text-slate-900 underline decoration-dotted">
+                    clear ranges
+                  </button>
+                )}
+              </div>
               <table className="dt">
                 <thead>
                   <tr>
