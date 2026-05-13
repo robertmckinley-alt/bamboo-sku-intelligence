@@ -23,6 +23,9 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
   const [selected, setSelected] = useState(null);
   // 'sr' = Sales Rep (default), 'vr' = VMI Rep
   const [repType, setRepType] = useState('sr');
+  const [storeTagFilter, setStoreTagFilter] = useState('');  // empty = show all; otherwise a tag name
+  // Reset the tag filter when switching reps so a stale filter doesn't hide everything.
+  React.useEffect(() => { setStoreTagFilter(''); }, [selected, repType]);
   const drilldownRef = React.useRef(null);
 
   // When a rep is picked, scroll the drilldown (store list etc.) into view.
@@ -263,7 +266,9 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
         const atRisk   = repClients.filter(c => c.storeTag === 'AT RISK');
         const highUp   = repClients.filter(c => c.storeTag === 'HIGH UPSIDE');
         const crossSell= repClients.filter(c => c.storeTag === 'CROSS-SELL');
-        const top      = repClients;  // full list, no cap
+        const top      = (storeTagFilter
+                          ? repClients.filter(c => c.storeTag === storeTagFilter)
+                          : repClients);
 
         const tagColor = (t) => {
           if (t === 'CALL NOW') return 'bg-emerald-600 text-white';
@@ -278,13 +283,34 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-baseline justify-between gap-3 flex-wrap">
               <div>
                 <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— high-priority stores</span></h3>
-                <div className="text-[10px] font-mono text-slate-500 small-caps">{sel.stores} stores · sorted by opportunity score</div>
+                <div className="text-[10px] font-mono text-slate-500 small-caps">{top.length}{top.length !== repClients.length ? ` of ${repClients.length}` : ''} stores{storeTagFilter ? ` · filtered to ${storeTagFilter}` : ''} · sorted by opportunity score</div>
               </div>
-              <div className="flex items-center gap-2 text-[10px] font-mono">
-                {callNow.length > 0 && <span className="px-2 py-0.5 rounded bg-emerald-600 text-white">{callNow.length} call now</span>}
-                {atRisk.length > 0 && <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200">{atRisk.length} at risk</span>}
-                {highUp.length > 0 && <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">{highUp.length} high upside</span>}
-                {crossSell.length > 0 && <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">{crossSell.length} cross-sell</span>}
+              <div className="flex items-center gap-2 text-[10px] font-mono flex-wrap">
+                {(() => {
+                  const chips = [
+                    {tag: 'CALL NOW',    count: callNow.length,   label: 'call now',    cls: 'bg-emerald-600 text-white',                          selCls: 'ring-2 ring-emerald-800'},
+                    {tag: 'AT RISK',     count: atRisk.length,    label: 'at risk',     cls: 'bg-rose-50 text-rose-800 border border-rose-200',     selCls: 'ring-2 ring-rose-500'},
+                    {tag: 'HIGH UPSIDE', count: highUp.length,    label: 'high upside', cls: 'bg-blue-50 text-blue-800 border border-blue-200',     selCls: 'ring-2 ring-blue-500'},
+                    {tag: 'CROSS-SELL',  count: crossSell.length, label: 'cross-sell',  cls: 'bg-amber-50 text-amber-800 border border-amber-200',  selCls: 'ring-2 ring-amber-500'},
+                  ].filter(c => c.count > 0);
+                  return chips.map(c => {
+                    const isOn = storeTagFilter === c.tag;
+                    return (
+                      <button key={c.tag}
+                              onClick={() => setStoreTagFilter(isOn ? '' : c.tag)}
+                              className={`px-2 py-0.5 rounded transition cursor-pointer ${c.cls} ${isOn ? c.selCls : 'opacity-90 hover:opacity-100'}`}
+                              title={isOn ? 'click to clear filter' : `click to filter to ${c.label}`}>
+                        {c.count} {c.label}
+                      </button>
+                    );
+                  });
+                })()}
+                {storeTagFilter && (
+                  <button onClick={() => setStoreTagFilter('')}
+                          className="text-slate-500 hover:text-slate-900 underline decoration-dotted">
+                    clear
+                  </button>
+                )}
               </div>
             </div>
             <div className="max-h-[480px] overflow-auto">
@@ -323,7 +349,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
               </table>
             </div>
             <div className="px-4 py-2 text-[10px] font-mono text-slate-500 bg-slate-50 border-t border-slate-200">
-              Showing all {top.length} stores · click any row to open the store drawer
+              {storeTagFilter ? `Filtered to ${storeTagFilter}: ${top.length} of ${repClients.length} stores` : `Showing all ${top.length} stores`} · click any row to open the store drawer
             </div>
           </div>
         );
