@@ -23,6 +23,16 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
   const [selected, setSelected] = useState(null);
   // 'sr' = Sales Rep (default), 'vr' = VMI Rep
   const [repType, setRepType] = useState('sr');
+  const drilldownRef = React.useRef(null);
+
+  // When a rep is picked, scroll the drilldown (store list etc.) into view.
+  const pickRep = (name) => {
+    setSelected(name);
+    requestAnimationFrame(() => {
+      const el = drilldownRef.current;
+      if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+    });
+  };
 
   // When the rep type changes, clear the selected rep so we don't try to
   // look up a sales-rep name in the VMI-rep aggregation (or vice versa).
@@ -122,12 +132,12 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
               ))}
             </div>
           </div>
-          <span className="text-[10px] font-mono text-slate-500 small-caps">{reps.length} {repType === 'sr' ? 'sales reps' : 'VMI reps'} · click a card for product drill-down</span>
+          <span className="text-[10px] font-mono text-slate-500 small-caps">{reps.length} {repType === 'sr' ? 'sales reps' : 'VMI reps'} · click a card to open their store list</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {reps.map(r => (
             <div key={r.name}
-                 onClick={() => setSelected(r.name)}
+                 onClick={() => pickRep(r.name)}
                  className={`bg-white border rounded-lg overflow-hidden cursor-pointer transition ${sel?.name===r.name ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-slate-200 hover:border-slate-300'}`}
                  style={{boxShadow: '0 1px 0 rgba(15,23,42,.04)'}}>
               <div className="px-4 py-3 border-b border-slate-200">
@@ -161,6 +171,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
         </div>
       </div>
 
+      <div ref={drilldownRef} />
       {sel && repBook && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -252,7 +263,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
         const atRisk   = repClients.filter(c => c.storeTag === 'AT RISK');
         const highUp   = repClients.filter(c => c.storeTag === 'HIGH UPSIDE');
         const crossSell= repClients.filter(c => c.storeTag === 'CROSS-SELL');
-        const top      = repClients.slice(0, 30);
+        const top      = repClients;  // full list, no cap
 
         const tagColor = (t) => {
           if (t === 'CALL NOW') return 'bg-emerald-600 text-white';
@@ -312,7 +323,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
               </table>
             </div>
             <div className="px-4 py-2 text-[10px] font-mono text-slate-500 bg-slate-50 border-t border-slate-200">
-              Showing top {top.length} of {repClients.length} · click any row to open the store drawer
+              Showing all {top.length} stores · click any row to open the store drawer
             </div>
           </div>
         );
