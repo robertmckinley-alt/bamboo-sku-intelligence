@@ -14,25 +14,41 @@
   // so "CARTS" / "Tasts" are NOT matched.
   const TS_RE = /(trade\s*sample)|(^|[^A-Za-z0-9])TS([^A-Za-z0-9]|$)/i;
   const isTradeSample = (name) => TS_RE.test(name || '');
-  // Manually excluded SKU names (case-insensitive exact match) — removed from dataset entirely
-    const EXCLUDED_SKU_NAMES = new Set([
-          'dabstract live resin disposable pens - 1g',
-          'panda pen disposables 1g',
-        ]);
-    const isExcludedSku = (name) => EXCLUDED_SKU_NAMES.has(String(name || '').toLowerCase().trim());
-  
 
   function inferTopCategory(name) {
     const n = (name || '').toLowerCase();
+
+    // ----- EXPLICIT MULTI-WORD OVERRIDES (must run BEFORE generic keywords) -----
+    // Bong Buddies = packaged flower, not prerolls
+    if (n.includes('bong buddies')) return 'Flower';
+    // Hot Shotz = THC/CBD beverage shots
+    if (n.includes('hot shot') || n.includes('hot shotz')) return 'Beverage';
+    // Panda Pens / Panda Pen AIO / Panda Pens CBD 1:1 / Panda Pens - 3pk = 510 vape hardware
+    if (n.includes('panda pen')) return 'Vapes';
+    // Juice Box = vape cartridge product line
+    if (n.includes('juice box')) return 'Vapes';
+    // Cake Icing / Cake Batter = concentrates (despite the dessert names)
+    if (n.includes('cake icing') || n.includes('cake batter') || n.includes('opal sugar')) return 'Concentrates';
+
+    // ----- GENERIC KEYWORD MATCHES -----
     if (n.includes('flower')) return 'Flower';
-    if (n.includes('preroll') || n.includes('pre-roll')) return 'Prerolls';
-    if (n.includes('vape') || n.includes('cart') || n.includes('disposable') || n.includes('pod')) return 'Vapor';
-    if (n.includes('edible') || n.includes('gummy') || n.includes('chocolate') || n.includes('beverage')) return 'Edibles';
-    if (n.includes('concentrate') || n.includes('dab') || n.includes('rosin') || n.includes('wax')
-        || n.includes('shatter') || n.includes('badder') || n.includes('sugar') || n.includes('diamond')) return 'Concentrates';
-    if (n.includes('topical')) return 'Topicals';
+    if (n.includes('preroll') || n.includes('pre-roll') || n.includes('joint') ||
+        n.includes('firecracker') || n.includes('sparkler')) return 'Prerolls';
+    if (n.includes('vape') || n.includes('cart') || n.includes('disposable') ||
+        n.includes('pod') || n.includes('aio')) return 'Vapes';
+    if (n.includes('gummiez') || n.includes('gummies') || n.includes('gummy') ||
+        n.includes('edible') || n.includes('chocolate') || n.includes('candies') ||
+        n.includes('candy') || n.includes('caramel') || n.includes('drop')) return 'Edibles';
+    if (n.includes('concentrate') || n.includes('dab') || n.includes('rosin') ||
+        n.includes('wax') || n.includes('shatter') || n.includes('badder') ||
+        n.includes('budder') || n.includes('crumble') || n.includes('sauce') ||
+        n.includes('sugar') || n.includes('diamond') || n.includes('icing') ||
+        n.includes('gems n') || n.includes('hash') || n.includes('banger')) return 'Concentrates';
+    if (n.includes('topical') || n.includes('balm') || n.includes('cream')) return 'Topicals';
     if (n.includes('tincture')) return 'Tinctures';
-    if (n.includes('accessor') || n.includes('apparel') || n.includes('merch')) return 'Accessories';
+    if (n.includes('beverage') || n.includes('drink') || n.includes('soda') || n.includes('seltzer')) return 'Beverage';
+    if (n.includes('accessor') || n.includes('apparel') || n.includes('merch') || n.includes('sticker')) return 'Accessories';
+
     return 'Other';
   }
 
@@ -51,9 +67,9 @@
     const retailCats  = api.dimensions.retail_categories ? api.dimensions.retail_categories.rows : [];
 
     // Keep flags per dimension (true = kept, false = trade sample → removed)
-        const keepPerf   = perfCats.map(r => !isTradeSample(r[1]) && !isExcludedSku(r[1]));
-        const keepRetail = retailCats.map(r => !isTradeSample(r[1]) && !isExcludedSku(r[1]));
-        const keepProd   = productsD.map(p => !isTradeSample(p[1]) && !isExcludedSku(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
+    const keepPerf   = perfCats.map(r => !isTradeSample(r[1]));
+    const keepRetail = retailCats.map(r => !isTradeSample(r[1]));
+    const keepProd   = productsD.map(p => !isTradeSample(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
 
     // Re-index surviving perf categories (SKUs) + build name → new index lookup
     const skuRemap = new Map();

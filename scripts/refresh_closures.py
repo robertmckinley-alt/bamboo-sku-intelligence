@@ -100,15 +100,24 @@ def perf_category_lookup(api: dict) -> dict[str, dict]:
 
 
 def infer_top_category(name: str) -> str:
+    """Mirrors apiAdapter.jsx inferTopCategory. Keep these in sync."""
     n = (name or '').lower()
-    if 'flower'   in n: return 'Flower'
-    if 'preroll'  in n or 'pre-roll' in n: return 'Prerolls'
-    if any(k in n for k in ('vape','cart','disposable','pod')):  return 'Vapes'
-    if any(k in n for k in ('edible','gummy','chocolate','beverage')): return 'Edibles'
-    if any(k in n for k in ('concentrate','dab','rosin','wax','shatter','badder','sugar','diamond')): return 'Concentrates'
-    if 'topical'  in n: return 'Topicals'
+    # Explicit multi-word overrides first
+    if 'bong buddies' in n: return 'Flower'
+    if 'hot shot' in n or 'hot shotz' in n: return 'Beverage'
+    if 'panda pen' in n: return 'Vapes'
+    if 'juice box' in n: return 'Vapes'
+    if 'cake icing' in n or 'cake batter' in n or 'opal sugar' in n: return 'Concentrates'
+    # Generic
+    if 'flower' in n: return 'Flower'
+    if any(k in n for k in ('preroll','pre-roll','joint','firecracker','sparkler')): return 'Prerolls'
+    if any(k in n for k in ('vape','cart','disposable','pod','aio')): return 'Vapes'
+    if any(k in n for k in ('gummiez','gummies','gummy','edible','chocolate','candies','candy','caramel','drop')): return 'Edibles'
+    if any(k in n for k in ('concentrate','dab','rosin','wax','shatter','badder','budder','crumble','sauce','sugar','diamond','icing','gems n','hash','banger')): return 'Concentrates'
+    if any(k in n for k in ('topical','balm','cream')): return 'Topicals'
     if 'tincture' in n: return 'Tinctures'
-    if any(k in n for k in ('accessor','apparel','merch')): return 'Accessories'
+    if any(k in n for k in ('beverage','drink','soda','seltzer')): return 'Beverage'
+    if any(k in n for k in ('accessor','apparel','merch','sticker')): return 'Accessories'
     return 'Other'
 
 
