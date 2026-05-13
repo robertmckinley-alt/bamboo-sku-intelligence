@@ -138,6 +138,9 @@
     }
 
     const today = new Date(api.generated_at);
+    // Strip " - House" / " - house" suffix to fold house accounts into the main rep.
+    const normRep = (rn) => (rn || '').replace(/\s*-\s*house\s*$/i, '').trim();
+
     const clients = clientsD.map((row, i) => {
       const [id, name, fr, vr, pg, dl, vs, ls, lic, isRev] = row;
       const agg = perClient.get(i) || { o: 0, u: 0, rev: 0 };
@@ -146,8 +149,8 @@
       return {
         i,
         n: name,
-        sr: reps[fr] ? reps[fr][1] : '',
-        vr: (vr != null && reps[vr]) ? reps[vr][1] : '',
+        sr: normRep(reps[fr] ? reps[fr][1] : ''),
+        vr: normRep((vr != null && reps[vr]) ? reps[vr][1] : ''),
         pg: pg || '',
         dl: dl || '',
         lic: lic || '',

@@ -85,6 +85,12 @@ def name_keyed_sales(api: dict) -> dict[tuple[str, str], dict]:
     return out
 
 
+# Strip " - House" suffix so house accounts fold into the main rep.
+_HOUSE_RE = re.compile(r'\s*-\s*house\s*$', re.I)
+def norm_rep(name: str) -> str:
+    return _HOUSE_RE.sub('', name or '').strip()
+
+
 def client_lookup(api: dict) -> dict[str, dict]:
     """{client_name: {sr, vr, ...}}"""
     reps    = api['dimensions']['reps']['rows']
@@ -96,8 +102,8 @@ def client_lookup(api: dict) -> dict[str, dict]:
     for row in clients:
         # [id, name, fr, vr, pg, dl, vs, ls, lic, isRev]
         out[row[1]] = {
-            'sr': rep_name(row[2]) or 'Unassigned',
-            'vr': rep_name(row[3]) or 'Unassigned',
+            'sr': norm_rep(rep_name(row[2])) or 'Unassigned',
+            'vr': norm_rep(rep_name(row[3])) or 'Unassigned',
         }
     return out
 
