@@ -162,7 +162,6 @@ function App() {
         </div>
 
         <aside className="rail w-72 border-l border-slate-200 bg-white flex-shrink-0 overflow-auto rail-stack no-print">
-          <WeightPanel skuW={skuW} setSkuW={setSkuW} storeW={storeW} setStoreW={setStoreW} onReset={resetWeights} />
           <RepLeaderboard a={analytics} onPickClient={setPickedClient} onExportRep={(rep, repType) => {
             const field = repType === 'vr' ? 'vr' : 'sr';
             const ids = analytics.clients.filter(c => (c[field]||'Unassigned') === rep).map(c => c.i);
