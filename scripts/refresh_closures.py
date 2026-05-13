@@ -34,6 +34,19 @@ TS_RE = re.compile(r'(trade\s*sample)|(^|[^A-Za-z0-9])TS([^A-Za-z0-9]|$)', re.I)
 def is_trade_sample(name: str) -> bool:
     return bool(TS_RE.search(name or ''))
 
+# ----- PERMANENT BLOCK LIST -----
+# Specific SKU groups the user has chosen to exclude from the app entirely.
+# Keep in sync with apiAdapter.jsx PERMANENT_BLOCK.
+PERMANENT_BLOCK = {
+    'dabstract live resin disposable pens - 1g',
+    'panda pen disposables 1g',
+}
+def is_blocked(name: str) -> bool:
+    return (name or '').lower().strip() in PERMANENT_BLOCK
+
+def should_drop(name: str) -> bool:
+    return is_trade_sample(name) or is_blocked(name)
+
 
 def fetch_api() -> dict:
     print(f"Fetching {API_URL} ...")
@@ -51,7 +64,7 @@ def name_keyed_sales(api: dict) -> dict[tuple[str, str], dict]:
     perf    = api['dimensions']['performance_categories']['rows']
     ccs     = api['facts']['category_client_sales']
 
-    keep_perf = [not is_trade_sample(row[1]) for row in perf]
+    keep_perf = [not should_drop(row[1]) for row in perf]
 
     out: dict[tuple[str, str], dict] = {}
     for i in range(len(ccs['row'])):

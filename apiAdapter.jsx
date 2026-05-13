@@ -15,6 +15,16 @@
   const TS_RE = /(trade\s*sample)|(^|[^A-Za-z0-9])TS([^A-Za-z0-9]|$)/i;
   const isTradeSample = (name) => TS_RE.test(name || '');
 
+  // ----- PERMANENT BLOCK LIST -----
+  // Specific SKU groups the user has chosen to exclude from the app entirely.
+  // Names matched case-insensitively, exact. Add new entries here to extend.
+  const PERMANENT_BLOCK = new Set([
+    'dabstract live resin disposable pens - 1g',
+    'panda pen disposables 1g',
+  ]);
+  const isBlocked = (name) => PERMANENT_BLOCK.has((name || '').toLowerCase().trim());
+  const shouldDrop = (name) => isTradeSample(name) || isBlocked(name);
+
   function inferTopCategory(name) {
     const n = (name || '').toLowerCase();
 
@@ -67,9 +77,9 @@
     const retailCats  = api.dimensions.retail_categories ? api.dimensions.retail_categories.rows : [];
 
     // Keep flags per dimension (true = kept, false = trade sample → removed)
-    const keepPerf   = perfCats.map(r => !isTradeSample(r[1]));
-    const keepRetail = retailCats.map(r => !isTradeSample(r[1]));
-    const keepProd   = productsD.map(p => !isTradeSample(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
+    const keepPerf   = perfCats.map(r => !shouldDrop(r[1]));
+    const keepRetail = retailCats.map(r => !shouldDrop(r[1]));
+    const keepProd   = productsD.map(p => !shouldDrop(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
 
     // Re-index surviving perf categories (SKUs) + build name → new index lookup
     const skuRemap = new Map();
