@@ -241,6 +241,82 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
           </div>
         </div>
       )}
+
+      {sel && (() => {
+        // Pull this rep's clients, sort by opp score, show as a high-priority list.
+        const repClients = a.clients
+          .filter(c => sel.clientIds.includes(c.i))
+          .slice()
+          .sort((x, y) => (y.oppScore || 0) - (x.oppScore || 0));
+        const callNow  = repClients.filter(c => c.storeTag === 'CALL NOW');
+        const atRisk   = repClients.filter(c => c.storeTag === 'AT RISK');
+        const highUp   = repClients.filter(c => c.storeTag === 'HIGH UPSIDE');
+        const crossSell= repClients.filter(c => c.storeTag === 'CROSS-SELL');
+        const top      = repClients.slice(0, 30);
+
+        const tagColor = (t) => {
+          if (t === 'CALL NOW') return 'bg-emerald-600 text-white';
+          if (t === 'AT RISK') return 'bg-rose-50 text-rose-800 border border-rose-200';
+          if (t === 'HIGH UPSIDE') return 'bg-blue-50 text-blue-800 border border-blue-200';
+          if (t === 'CROSS-SELL') return 'bg-amber-50 text-amber-800 border border-amber-200';
+          return 'bg-slate-50 text-slate-600 border border-slate-200';
+        };
+
+        return (
+          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-baseline justify-between gap-3 flex-wrap">
+              <div>
+                <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— high-priority stores</span></h3>
+                <div className="text-[10px] font-mono text-slate-500 small-caps">{sel.stores} stores · sorted by opportunity score</div>
+              </div>
+              <div className="flex items-center gap-2 text-[10px] font-mono">
+                {callNow.length > 0 && <span className="px-2 py-0.5 rounded bg-emerald-600 text-white">{callNow.length} call now</span>}
+                {atRisk.length > 0 && <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200">{atRisk.length} at risk</span>}
+                {highUp.length > 0 && <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 border border-blue-200">{highUp.length} high upside</span>}
+                {crossSell.length > 0 && <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">{crossSell.length} cross-sell</span>}
+              </div>
+            </div>
+            <div className="max-h-[480px] overflow-auto">
+              <table className="dt">
+                <thead>
+                  <tr>
+                    <th className="text-right" style={{width: 36}}>#</th>
+                    <th>Store</th>
+                    <th>Tag</th>
+                    <th className="text-right">Opp score</th>
+                    <th className="text-right">Revenue</th>
+                    <th className="text-right">Missed $</th>
+                    <th className="text-right">Last order</th>
+                    <th className="text-right">SKUs</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {top.map((c, i) => {
+                    const d = c.daysSinceOrder;
+                    const lastTxt = d == null ? '—' : (d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d}d ago`);
+                    const lastCls = d != null && d <= 7 ? 'text-emerald-700' : d != null && d >= 30 ? 'text-rose-700' : 'text-slate-500';
+                    return (
+                      <tr key={c.i} onClick={() => onPickClient && onPickClient(c.i)} className="cursor-pointer">
+                        <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                        <td className="truncate max-w-[260px]" title={c.n}>{c.n}</td>
+                        <td>{c.storeTag && <span className={`pill ${tagColor(c.storeTag)}`}>{c.storeTag}</span>}</td>
+                        <td className="text-right tabular-nums font-mono">{(c.oppScore || 0).toFixed(0)}</td>
+                        <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(c.rev)}</td>
+                        <td className="text-right tabular-nums font-mono text-rose-700">{fmt$(c.missedRev || 0)}</td>
+                        <td className={`text-right tabular-nums font-mono ${lastCls}`} title={c.ls || ''}>{lastTxt}</td>
+                        <td className="text-right tabular-nums font-mono text-slate-500">{c.skusCarried}/{c.skusAll}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-4 py-2 text-[10px] font-mono text-slate-500 bg-slate-50 border-t border-slate-200">
+              Showing top {top.length} of {repClients.length} · click any row to open the store drawer
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
