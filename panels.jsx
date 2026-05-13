@@ -145,7 +145,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
                  {label:'MONITOR', text:'Steady performer. Watch for movement up or down.'};
 
   return (
-    <Drawer onClose={onClose} width={920}>
+    <Drawer onClose={onClose} width={1100}>
       <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3.5 flex items-start gap-3 z-10">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -253,17 +253,26 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
                 <Th k="r" sort={carrySort} setSort={setCarrySort} label="Revenue" align="right" />
                 <Th k="u" sort={carrySort} setSort={setCarrySort} label="Units" align="right" />
                 <Th k="pct" sort={carrySort} setSort={setCarrySort} label="% of store" align="right" />
+                <Th k="daysSinceOrder" sort={carrySort} setSort={setCarrySort} label="Last order" align="right" hint="Days since the store's last order, with date" />
               </tr>
             </thead>
             <tbody>
-              {sortedCarriers.map(({client, r, u}) => (
-                <tr key={client.i} onClick={() => onPickClient(client.i)} className="cursor-pointer">
-                  <td className="truncate max-w-[200px]">{client.n}</td>
-                  <td className="text-right tabular-nums font-mono">{fmt$(r)}</td>
-                  <td className="text-right tabular-nums font-mono text-slate-500">{fmtN(u)}</td>
-                  <td className="text-right tabular-nums font-mono text-slate-500">{fmtPct(r/(client.rev||1),0)}</td>
-                </tr>
-              ))}
+              {sortedCarriers.map(({client, r, u}) => {
+                const d = client.daysSinceOrder;
+                const fresh = d != null && d <= 7;
+                const stale = d != null && d >= 30;
+                const lastTxt = d == null ? '—' : (d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d}d ago`);
+                const cls = fresh ? 'text-emerald-700' : stale ? 'text-rose-700' : 'text-slate-500';
+                return (
+                  <tr key={client.i} onClick={() => onPickClient(client.i)} className="cursor-pointer">
+                    <td className="truncate max-w-[200px]">{client.n}</td>
+                    <td className="text-right tabular-nums font-mono">{fmt$(r)}</td>
+                    <td className="text-right tabular-nums font-mono text-slate-500">{fmtN(u)}</td>
+                    <td className="text-right tabular-nums font-mono text-slate-500">{fmtPct(r/(client.rev||1),0)}</td>
+                    <td className={`text-right tabular-nums font-mono ${cls}`} title={client.ls || ''}>{lastTxt}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
