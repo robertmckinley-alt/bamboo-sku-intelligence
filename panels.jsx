@@ -34,6 +34,13 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
   const [nonCarrySort, setNonCarrySort] = useState({key: 'oppScore', dir: 'desc'});
   const [carrySort, setCarrySort] = useState({key: 'r', dir: 'desc'});
   const [pipelineIds, setPipelineIds] = useState(new Set());
+  // Retailer search / rep filter applied to BOTH carriers and non-carriers tables
+  const [retailerSearch, setRetailerSearch] = useState('');
+  const [drawerRepType, setDrawerRepType] = useState('sr');
+  const [drawerRepFilter, setDrawerRepFilter] = useState('All');
+  // Reset rep filter when toggling type so we don't carry a stale name
+  React.useEffect(() => { setDrawerRepFilter('All'); }, [drawerRepType, skuId]);
+  React.useEffect(() => { setRetailerSearch(''); }, [skuId]);
   // If a rep context was passed in (i.e. drawer opened from a rep-filtered view),
   // scope the carriers / non-carriers tables to that rep's clients by default.
   // The user can toggle off to see all stores.
@@ -57,7 +64,16 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
     return arr;
   }, [a, skuId, repClientSet]);
   const sortedCarriers = useMemo(() => {
-    const arr = [...carriers];
+    let arr = [...carriers];
+    // Retailer-name search
+    if (retailerSearch) {
+      const q = retailerSearch.toLowerCase();
+      arr = arr.filter(x => (x.client.n || '').toLowerCase().includes(q));
+    }
+    // Rep filter (uses drawerRepType)
+    if (drawerRepFilter !== 'All') {
+      arr = arr.filter(x => (x.client[drawerRepType] || 'Unassigned') === drawerRepFilter);
+    }
     const k = carrySort.key;
     const m = carrySort.dir === 'asc' ? 1 : -1;
     arr.sort((x,y) => {
@@ -67,7 +83,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
       return ((xv ?? 0) - (yv ?? 0)) * m;
     });
     return arr;
-  }, [carriers, carrySort]);
+  }, [carriers, carrySort, retailerSearch, drawerRepFilter, drawerRepType]);
 
   // For non-carriers we need the FULL set of clients carrying this SKU (not just the
   // rep-scoped subset of carriers above) — otherwise a rep's client that isn't carrying
@@ -76,7 +92,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
   const carriedSet = useMemo(() => new Set(((a.bySku.get(skuId) || []).filter(([c,r,u]) => r > 0).map(([c]) => c))), [a, skuId]);
   const nonCarriers = useMemo(() => {
     let list = a.clients.filter(c => !carriedSet.has(c.i));
-    // Note: non-carriers are GLOBAL (all 51 missing stores) regardless of rep scope, so reps can see every uncovered store
+    if (repClientSet) list = list.filter(c => repClientSet.has(c.i));
     const avgRevPerStore = a.meta.totalRevenue / a.clients.length;
     return list.map(c => {
       const sizeFactor = Math.min(2, Math.max(0.2, c.rev / Math.max(1, avgRevPerStore)));
@@ -88,7 +104,16 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
   }, [a, sku, carriedSet, repClientSet]);
 
   const sortedNonCarriers = useMemo(() => {
-    const arr = [...nonCarriers];
+    let arr = [...nonCarriers];
+    // Retailer-name search
+    if (retailerSearch) {
+      const q = retailerSearch.toLowerCase();
+      arr = arr.filter(x => (x.client.n || '').toLowerCase().includes(q));
+    }
+    // Rep filter (uses drawerRepType)
+    if (drawerRepFilter !== 'All') {
+      arr = arr.filter(x => (x.client[drawerRepType] || 'Unassigned') === drawerRepFilter);
+    }
     const k = nonCarrySort.key;
     const m = nonCarrySort.dir === 'asc' ? 1 : -1;
     arr.sort((x,y) => {
@@ -98,7 +123,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
       return ((xv ?? 0) - (yv ?? 0)) * m;
     });
     return arr;
-  }, [nonCarriers, nonCarrySort]);
+  }, [nonCarriers, nonCarrySort, retailerSearch, drawerRepFilter, drawerRepType]);
 
   const totalOpp = nonCarriers.reduce((s, x) => s + x.est, 0);
   const highValMissing = nonCarriers.filter(x => x.client.storeTag === 'CALL NOW' || x.client.oppScore >= 70);
@@ -178,10 +203,47 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
         </div>
       )}
 
+      {/* Retailer search + rep filter for both tables below */}
+      {(() => {
+        const repOptions = (() => {
+          const s = new Set();
+          for (const cl of a.clients) {
+            const k = cl[drawerRepType] || 'Unassigned';
+            if (k) s.add(k);
+          }
+          return ['All', ...[...s].sort()];
+        })();
+        return (
+          <div className="px-4 py-2.5 border-b border-slate-200 bg-white flex items-center gap-2 flex-wrap sticky" style={{top: pipelineIds.size?142:84, zIndex:8}}>
+            <input type="search" placeholder="Search retailer by name…"
+                   value={retailerSearch} onChange={e => setRetailerSearch(e.target.value)}
+                   className="text-[11px] flex-1 min-w-[180px]" />
+            <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold" title="Filter by Sales Rep or VMI Rep">
+              {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
+                <button key={k} onClick={() => setDrawerRepType(k)}
+                        className={`px-2 py-0.5 rounded ${drawerRepType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+              ))}
+            </div>
+            <select value={drawerRepFilter} onChange={e => setDrawerRepFilter(e.target.value)} className="text-[11px]" style={{maxWidth: 220}}>
+              {repOptions.map(r => <option key={r} value={r}>{r === 'All' ? (drawerRepType==='sr'?'All sales reps':'All VMI reps') : r}</option>)}
+            </select>
+            {(retailerSearch || drawerRepFilter !== 'All') && (
+              <button onClick={() => { setRetailerSearch(''); setDrawerRepFilter('All'); }}
+                      className="text-[10px] font-mono text-slate-500 hover:text-slate-900 underline decoration-dotted">
+                clear filters
+              </button>
+            )}
+            <span className="ml-auto text-[10px] font-mono text-slate-500 tabular-nums">
+              showing {sortedCarriers.length} carrying · {sortedNonCarriers.length} not
+            </span>
+          </div>
+        );
+      })()}
+
       <div className="grid grid-cols-2 divide-x divide-slate-200">
         <div className="overflow-hidden">
-          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between sticky" style={{top: pipelineIds.size?142:84, zIndex:7}}>
-            <span>Carrying ({carriers.length})</span>
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between sticky" style={{top: pipelineIds.size?188:130, zIndex:7}}>
+            <span>Carrying ({sortedCarriers.length}{sortedCarriers.length !== carriers.length ? ` of ${carriers.length}` : ''})</span>
             <span className="font-mono text-slate-700">{fmt$(sku.rev)}</span>
           </div>
           <table className="dt">
@@ -206,8 +268,8 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
           </table>
         </div>
         <div className="overflow-hidden">
-          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between items-center sticky" style={{top: pipelineIds.size?142:84, zIndex:7}}>
-            <span>NOT carrying ({nonCarriers.length})</span>
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between items-center sticky" style={{top: pipelineIds.size?188:130, zIndex:7}}>
+            <span>NOT carrying ({sortedNonCarriers.length}{sortedNonCarriers.length !== nonCarriers.length ? ` of ${nonCarriers.length}` : ''})</span>
             <span className="font-mono text-emerald-700">opp {fmt$(totalOpp)}</span>
           </div>
           <table className="dt">
@@ -229,7 +291,8 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
                   </td>
                   <td className="truncate max-w-[180px]" onClick={() => onPickClient(client.i)}>
                     <div>{client.n}</div>
-</td>
+                    <div className="text-[9px] text-slate-400 -mt-0.5"><Tag tag={client.storeTag} size="sm"/></div>
+                  </td>
                   <td className="text-right tabular-nums font-mono" onClick={() => onPickClient(client.i)}>{client.oppScore.toFixed(0)}</td>
                   <td className="text-right tabular-nums font-mono text-slate-500" onClick={() => onPickClient(client.i)}>{fmt$(client.rev)}</td>
                   <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold" onClick={() => onPickClient(client.i)}>{fmt$(est)}</td>
@@ -419,7 +482,8 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
       <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-4 flex items-start gap-3 z-10">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className="text-[11px] font-mono text-slate-500">License {cl.lic || '—'}</span>
+            <Tag tag={cl.storeTag} size="lg" />
+            <span className="text-[11px] font-mono text-slate-500">License {cl.lic || '—'}</span>
             {days < 999 && <span className="text-[11px] font-mono text-slate-500">· last order {days}d ago</span>}
             <span className="text-[11px] font-mono text-slate-500">· opp score {cl.oppScore.toFixed(0)}</span>
           </div>
