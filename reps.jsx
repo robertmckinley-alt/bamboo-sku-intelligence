@@ -217,20 +217,45 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                     <th className="text-right">Revenue</th>
                     <th className="text-right">Units</th>
                     <th className="text-right">Stores</th>
+                    <th className="text-right" title="Penetration across this rep's stores">Rep %</th>
+                    <th className="text-right" title="Global penetration across the full network">Net %</th>
+                    <th className="text-right" title="Global penetration goal (from goal sheet)">Goal</th>
+                    <th className="text-right" title="Stores in this rep's book still needed to hit the goal across their base">To Goal</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {repBook.topSkus.slice(0, 25).map((row, i) => (
-                    <tr key={row.sku.i} onClick={() => onPickSku && onPickSku(row.sku.i, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
-                      <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
-                      <td className="truncate max-w-[220px]" title={row.sku.n}>{row.sku.n}</td>
-                      <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{row.sku.c}</span></td>
-                      <td><Tag tag={row.sku.tag} /></td>
-                      <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(row.rev)}</td>
-                      <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(row.u)}</td>
-                      <td className="text-right tabular-nums font-mono text-slate-500">{row.stores}/{sel.stores}</td>
-                    </tr>
-                  ))}
+                  {repBook.topSkus.slice(0, 25).map((row, i) => {
+                    // Rep-scoped penetration: % of THIS rep's stores carrying the group.
+                    const repPenet = sel.stores ? row.stores / sel.stores : 0;
+                    const goal = row.sku.distGoal;
+                    const overGoal = goal != null && repPenet >= goal;
+                    const penetClass = repPenet>=0.7?'text-emerald-700':repPenet>=0.4?'text-amber-700':'text-rose-700';
+                    const goalClass = goal == null ? 'text-slate-400'
+                      : overGoal ? 'text-emerald-700'
+                      : (goal - repPenet) <= 0.10 ? 'text-amber-700'
+                      : 'text-rose-700';
+                    const need = goal != null ? Math.max(0, Math.ceil(goal * sel.stores) - row.stores) : null;
+                    const needClass = need == null ? 'text-slate-400' : need === 0 ? 'text-emerald-700' : need >= 10 ? 'text-rose-700' : 'text-amber-700';
+                    return (
+                      <tr key={row.sku.i} onClick={() => onPickSku && onPickSku(row.sku.i, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
+                        <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                        <td className="truncate max-w-[220px]" title={row.sku.n}>{row.sku.n}</td>
+                        <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{row.sku.c}</span></td>
+                        <td><Tag tag={row.sku.tag} /></td>
+                        <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(row.rev)}</td>
+                        <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(row.u)}</td>
+                        <td className="text-right tabular-nums font-mono text-slate-500">{row.stores}/{sel.stores}</td>
+                        <td className={`text-right tabular-nums font-mono ${penetClass}`}>{fmtPct(repPenet, 0)}</td>
+                        <td className="text-right tabular-nums font-mono text-slate-500" title={`Network: ${row.sku.stores}/${a.clients.length} stores`}>{fmtPct(row.sku.distPct, 0)}</td>
+                        <td className={`text-right tabular-nums font-mono ${goalClass}`} title={goal != null ? `Global goal: ${(goal*100).toFixed(0)}%` : 'No goal set'}>
+                          {goal == null ? '—' : fmtPct(goal, 0)}
+                        </td>
+                        <td className={`text-right tabular-nums font-mono ${needClass}`} title={goal != null ? `Stores in ${sel.name}'s book still needed for ${(goal*100).toFixed(0)}% goal` : ''}>
+                          {need == null ? '—' : (need === 0 ? '✓' : '+' + need)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -254,6 +279,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                     <th className="text-right" style={{width: 90}}>Share</th>
                     <ProdTh k="u" label="Units" align="right" />
                     <ProdTh k="vel" label="Vel / mo" align="right" hint="Units per month" />
+                    <th className="text-right" title="Global penetration goal for the SKU group">Goal</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -261,8 +287,10 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                     const maxRevP = Math.max(1, ...repProducts.map(p => p.rev || 0));
                     const totalShown = repProducts.reduce((s, p) => s + (p.rev || 0), 0);
                     return repProducts.map((p, i) => {
-                      const groupName = a.skuById.get(p.sg)?.n || '—';
+                      const groupSku = a.skuById.get(p.sg);
+                      const groupName = groupSku?.n || '—';
                       const sharePct = totalShown > 0 ? (p.rev / totalShown) : 0;
+                      const goal = groupSku?.distGoal;
                       return (
                         <tr key={p.i} onClick={() => onPickSku && onPickSku(p.sg, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
                           <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
@@ -281,12 +309,13 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                           </td>
                           <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
                           <td className="text-right tabular-nums font-mono text-slate-500">{fmtNum(p.vel || 0, 0)}</td>
+                          <td className="text-right tabular-nums font-mono text-slate-500" title={goal != null ? `Global goal: ${(goal*100).toFixed(0)}%` : 'No goal set'}>{goal == null ? '—' : fmtPct(goal, 0)}</td>
                         </tr>
                       );
                     });
                   })()}
                   {repProducts.length === 0 && (
-                    <tr><td colSpan={9} className="text-center text-[11px] text-slate-400 py-6">No voids — this rep's stores carry every SKU group.</td></tr>
+                    <tr><td colSpan={10} className="text-center text-[11px] text-slate-400 py-6">No voids — this rep's stores carry every SKU group.</td></tr>
                   )}
                 </tbody>
               </table>
