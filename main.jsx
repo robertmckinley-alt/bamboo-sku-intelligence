@@ -97,7 +97,7 @@ function App() {
     {id:'topskus', label:'Top SKUs'},
     {id:'reps', label:'Reps'},
     {id:'closures', label:'Closures'},
-    {id:'buckets', l!bel:'Buckets'},
+    {id:'buckets', label:'Buckets'},
     {id:'howto', label:'How to Use'},
   ];
 
