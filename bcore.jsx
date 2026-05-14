@@ -44,7 +44,7 @@ function normalize(arr, getter) {
 }
 
 function buildAnalytics(data, skuWeights, storeWeights) {
-  const { clients, skus, matrix, meta, products, penetrationGoals } = data;
+  const { clients, skus, matrix, meta, products, penetrationGoals, categoryOverrides } = data;
   const months = meta.months;
   const totalStores = clients.length;
 
@@ -73,6 +73,11 @@ function buildAnalytics(data, skuWeights, storeWeights) {
     return (typeof v === 'number' && isFinite(v)) ? v : null;
   };
 
+  // Category overrides (data/category_overrides.json) — for SKU groups
+  // that are miscategorized upstream. Keyed by the same normalized SKU name.
+  const overrideLookup = categoryOverrides || {};
+  const getCategoryOverride = (sku) => overrideLookup[normName(sku && sku.n)] || null;
+
   // Index matrix by sku and by client
   const byClient = new Map();
   const bySku = new Map();
@@ -86,6 +91,9 @@ function buildAnalytics(data, skuWeights, storeWeights) {
 
   // SKU enrichment
   const skuEnriched = skus.map(s => {
+    // Apply category override if configured (fixes miscategorized SKU groups).
+    const overrideC = getCategoryOverride(s);
+    if (overrideC) s = { ...s, c: overrideC };
     const rows = bySku.get(s.i) || [];
     const buyersWithRev = rows.filter(([c,r,u]) => r > 0);
     const stores = buyersWithRev.length;
