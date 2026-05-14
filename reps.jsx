@@ -344,7 +344,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
         const crossSell= repClients.filter(c => c.storeTag === 'CROSS-SELL');
         let top = storeTagFilter
           ? repClients.filter(c => c.storeTag === storeTagFilter)
-          : repClients.sl	ce();
+          : repClients.slice();
         // Apply column sort
         const k = storeSort.key, m = storeSort.dir === 'asc' ? 1 : -1;
         top.sort((x, y) => {
