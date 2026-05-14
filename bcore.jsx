@@ -48,13 +48,28 @@ function buildAnalytics(data, skuWeights, storeWeights) {
   const months = meta.months;
   const totalStores = clients.length;
 
-  // Global penetration goals — {sku_group_id (string) -> goal (0..1)}.
+  // Global penetration goals — {normalized_sku_name -> goal (0..1)}.
   // Loaded once in main.jsx from data/penetration_goals.json; we read it
   // here so distGoal lives on every SKU object alongside distPct. Anywhere
   // the app already shows distPct can now show distGoal for free.
+  //
+  // Keyed by NAME (not ID) because the live API assigns SKU IDs dynamically,
+  // so ID-based lookup would break whenever the catalog grows. The
+  // normalization mirrors scripts/build_penetration_goals.py: lowercase,
+  // strip trailing count suffixes, normalize apostrophes, drop asterisks.
   const goalLookup = penetrationGoals || {};
-  const getGoal = (id) => {
-    const v = goalLookup[String(id)];
+  const ALIASES = { 'panda pens': 'panda pen' };
+  const normName = (str) => {
+    if (!str) return '';
+    let t = String(str).normalize('NFKD');
+    t = t.replace(/[\u2019\u2018]/g, "'").replace(/\*/g, '');
+    t = t.replace(/\s+\d+\s*$/, '').trim();
+    t = t.replace(/\s+/g, ' ').trim().toLowerCase();
+    return ALIASES[t] || t;
+  };
+  const getGoal = (sku) => {
+    const key = normName(sku && sku.n);
+    const v = goalLookup[key];
     return (typeof v === 'number' && isFinite(v)) ? v : null;
   };
 
@@ -65,7 +80,7 @@ function buildAnalytics(data, skuWeights, storeWeights) {
     const c = m.c, s = m.s, r = m.r, u = m.u;
     if (!byClient.has(c)) byClient.set(c, []);
     byClient.get(c).push([s, r, u]);
-    if (!bySku.has(s)) bySku.set(s, []);
+    if (!bySku.has(s� bySku.set(s, []);
     bySku.get(s).push([c, r, u]);
   }
 
@@ -93,7 +108,7 @@ function buildAnalytics(data, skuWeights, storeWeights) {
     // absolute target count of stores; distGapToGoal is how many *more*
     // stores must be added to hit the goal (clamped at 0 — over-goal is shown
     // as a 0 gap, not a negative).
-    const distGoal = getGoal(s.i);
+    const distGoal = getGoal(s);
     const distGoalStores = distGoal != null ? Math.ceil(distGoal * totalStores) : null;
     const distGapToGoal = distGoal != null ? Math.max(0, distGoalStores - stores) : null;
     const distVsGoal = distGoal != null ? (distPct - distGoal) : null;
