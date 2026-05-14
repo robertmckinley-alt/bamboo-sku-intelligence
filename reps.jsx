@@ -179,7 +179,6 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                   <th className="text-right" style={{width: 36}}>#</th>
                   <th>SKU Group</th>
                   <th>Category</th>
-                  <th>Tag</th>
                   <th className="text-right">Revenue</th>
                   <th className="text-right">Units</th>
                   <th className="text-right">Stores</th>
@@ -207,7 +206,6 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                       <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                       <td className="truncate max-w-[220px]" title={row.sku.n}>{row.sku.n}</td>
                       <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{row.sku.c}</span></td>
-                      <td><Tag tag={row.sku.tag} /></td>
                       <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(row.rev)}</td>
                       <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(row.u)}</td>
                       <td className="text-right tabular-nums font-mono text-slate-500">{row.stores}/{sel.stores}</td>
