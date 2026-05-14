@@ -23,6 +23,10 @@ function App() {
     const fetchGoals = () => fetch('data/penetration_goals.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
       .then(r => r.ok ? r.json() : {})
       .catch(() => ({}));
+    // Category overrides — same file pattern, used to correct miscategorized SKU groups
+    const fetchOverrides = () => fetch('data/category_overrides.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
+      .then(r => r.ok ? r.json() : {})
+      .catch(() => ({}));
 
     const useLive = window.BambooApiAdapter && typeof window.BambooApiAdapter.loadLiveDataset === 'function';
     const dsPromise = useLive
@@ -33,8 +37,8 @@ function App() {
           })
       : fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'}).then(r => r.json());
 
-    Promise.all([dsPromise, fetchGoals()])
-      .then(([ds, goals]) => setData({...ds, penetrationGoals: goals || {}}))
+    Promise.all([dsPromise, fetchGoals(), fetchOverrides()])
+      .then(([ds, goals, overrides]) => setData({...ds, penetrationGoals: goals || {}, categoryOverrides: overrides || {}}))
       .catch(e => setError(String(e)));
   }, []);
 
@@ -93,7 +97,7 @@ function App() {
     {id:'topskus', label:'Top SKUs'},
     {id:'reps', label:'Reps'},
     {id:'closures', label:'Closures'},
-    {id:'buckets', label:'Buckets'},
+    {id:'buckets', l!bel:'Buckets'},
     {id:'howto', label:'How to Use'},
   ];
 
