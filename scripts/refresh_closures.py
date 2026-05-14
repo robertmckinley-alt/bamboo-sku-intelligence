@@ -141,8 +141,19 @@ def infer_top_category(name: str) -> str:
 
 
 def diff(prev_api: dict | None, curr_api: dict, today: str) -> list[dict]:
+    # SAFETY GUARD: if there's no previous snapshot, we CANNOT distinguish a
+    # true void closure from a pair that's been ordering all year. The very
+    # first run of this script (2026-05-13) emitted ~12k bogus "closures"
+    # because prev_api was None - every active (client, SKU) pair got logged.
+    # Refuse to bootstrap into closures.json: just save today's snapshot and
+    # let tomorrow's run produce the first real diff.
+    if prev_api is None:
+        print("  refusing to bootstrap closures with no previous snapshot - "
+              "today's snapshot will be saved for tomorrow's diff")
+        return []
+
     curr_sales = name_keyed_sales(curr_api)
-    prev_sales = name_keyed_sales(prev_api) if prev_api else {}
+    prev_sales = name_keyed_sales(prev_api)
     clients    = client_lookup(curr_api)
     perf       = perf_category_lookup(curr_api)
 
