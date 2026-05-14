@@ -107,47 +107,6 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
     return {topSkus, cats, carrying};
   }, [sel, a]);
 
-  // For the selected rep — top 25 VOIDS across their store base.
-  // A "void" = an individual product whose SKU group is NOT carried anywhere in
-  // this rep's book. Sorted by global revenue (= highest-priority pitches first).
-  const repProductSort = useState({key: 'rev', dir: 'desc'});
-  const [productSort, setProductSort] = repProductSort;
-  const repProducts = useMemo(() => {
-    if (!sel || !repBook) return [];
-    // Voids = individual products with NO orders this year (rev = 0 in the
-    // dataset window). These are catalog items the network hasn't moved
-    // yet — sales targets for this rep to pitch. We don't have per-product
-    // per-store attribution, so we show the global "untouched" list and
-    // rank products in SKU groups the rep already covers first (easiest
-    // add-on sale since they have foot-in-door).
-    const repGroupIds = repBook.carrying;
-    let arr = (a.products || []).filter(p => (p.rev || 0) === 0);
-    const k = productSort.key, m = productSort.dir === 'asc' ? 1 : -1;
-    arr.sort((x, y) => {
-      // Primary: products in rep's covered groups first
-      const xInBook = repGroupIds.has(x.sg) ? 0 : 1;
-      const yInBook = repGroupIds.has(y.sg) ? 0 : 1;
-      if (xInBook !== yInBook) return xInBook - yInBook;
-      // Secondary: user-selected sort
-      const xv = x[k], yv = y[k];
-      if (typeof xv === 'string') return (xv || '').localeCompare(yv || '') * m;
-      return ((xv ?? 0) - (yv ?? 0)) * m;
-    });
-    return arr.slice(0, 25);
-  }, [sel, repBook, a.products, productSort]);
-
-  // Helper for the void table header — sortable click w/ arrow indicator.
-  const ProdTh = ({k, label, align='left', hint}) => (
-    <th className={`sortable ${align==='right'?'text-right':'text-left'}`} title={hint}
-        onClick={() => setProductSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}))}>
-      <span className="inline-flex items-center gap-1">{label}
-        <span className={`text-[8px] ${productSort.key===k?'text-slate-700':'text-slate-300'}`}>
-          {productSort.key===k ? (productSort.dir==='asc'?'▲':'▼') : '▴▾'}
-        </span>
-      </span>
-    </th>
-  );
-
   const maxRev = reps[0]?.revenue || 1;
 
   if (!reps.length) {
@@ -208,126 +167,63 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
 
       <div ref={drilldownRef} />
       {sel && repBook && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-              <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— top SKU groups</span></h3>
-              <div className="text-[10px] font-mono text-slate-500 small-caps">attributed via this {repType === 'sr' ? 'sales rep' : 'VMI rep'}'s clients · click to open</div>
-            </div>
-            <div className="max-h-[420px] overflow-auto">
-              <table className="dt">
-                <thead>
-                  <tr>
-                    <th className="text-right" style={{width: 36}}>#</th>
-                    <th>SKU Group</th>
-                    <th>Category</th>
-                    <th>Tag</th>
-                    <th className="text-right">Revenue</th>
-                    <th className="text-right">Units</th>
-                    <th className="text-right">Stores</th>
-                    <th className="text-right" title="Penetration across this rep's stores">Rep %</th>
-                    <th className="text-right" title="Global penetration across the full network">Net %</th>
-                    <th className="text-right" title="Global penetration goal (from goal sheet)">Goal</th>
-                    <th className="text-right" title="Stores in this rep's book still needed to hit the goal across their base">To Goal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {repBook.topSkus.slice(0, 25).map((row, i) => {
-                    // Rep-scoped penetration: % of THIS rep's stores carrying the group.
-                    const repPenet = sel.stores ? row.stores / sel.stores : 0;
-                    const goal = row.sku.distGoal;
-                    const overGoal = goal != null && repPenet >= goal;
-                    const penetClass = repPenet>=0.7?'text-emerald-700':repPenet>=0.4?'text-amber-700':'text-rose-700';
-                    const goalClass = goal == null ? 'text-slate-400'
-                      : overGoal ? 'text-emerald-700'
-                      : (goal - repPenet) <= 0.10 ? 'text-amber-700'
-                      : 'text-rose-700';
-                    const need = goal != null ? Math.max(0, Math.ceil(goal * sel.stores) - row.stores) : null;
-                    const needClass = need == null ? 'text-slate-400' : need === 0 ? 'text-emerald-700' : need >= 10 ? 'text-rose-700' : 'text-amber-700';
-                    return (
-                      <tr key={row.sku.i} onClick={() => onPickSku && onPickSku(row.sku.i, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
-                        <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
-                        <td className="truncate max-w-[220px]" title={row.sku.n}>{row.sku.n}</td>
-                        <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{row.sku.c}</span></td>
-                        <td><Tag tag={row.sku.tag} /></td>
-                        <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(row.rev)}</td>
-                        <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(row.u)}</td>
-                        <td className="text-right tabular-nums font-mono text-slate-500">{row.stores}/{sel.stores}</td>
-                        <td className={`text-right tabular-nums font-mono ${penetClass}`}>{fmtPct(repPenet, 0)}</td>
-                        <td className="text-right tabular-nums font-mono text-slate-500" title={`Network: ${row.sku.stores}/${a.clients.length} stores`}>{fmtPct(row.sku.distPct, 0)}</td>
-                        <td className={`text-right tabular-nums font-mono ${goalClass}`} title={goal != null ? `Global goal: ${(goal*100).toFixed(0)}%` : 'No goal set'}>
-                          {goal == null ? '—' : fmtPct(goal, 0)}
-                        </td>
-                        <td className={`text-right tabular-nums font-mono ${needClass}`} title={goal != null ? `Stores in ${sel.name}'s book still needed for ${(goal*100).toFixed(0)}% goal` : ''}>
-                          {need == null ? '—' : (need === 0 ? '✓' : '+' + need)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+        <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
+            <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— top SKU groups</span></h3>
+            <div className="text-[10px] font-mono text-slate-500 small-caps">attributed via this {repType === 'sr' ? 'sales rep' : 'VMI rep'}'s clients · click to open</div>
           </div>
-
-          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-              <h3 className="font-display text-[16px] font-semibold tracking-tight">Top 25 Voids <span className="text-slate-400 italic">— across {sel.name}'s store base ({repType === 'sr' ? 'sales rep' : 'VMI rep'})</span></h3>
-              <div className="text-[10px] font-mono text-slate-500 small-caps">individual products with NO orders this year — pitch list, ranked with rep's covered categories first · click column to sort · click row to open the SKU drawer</div>
-            </div>
-            <div className="max-h-[420px] overflow-auto">
-              <table className="dt">
-                <thead>
-                  <tr>
-                    <th className="text-right" style={{width: 36}}>#</th>
-                    <ProdTh k="n" label="Product" />
-                    <ProdTh k="b" label="Brand" />
-                    <th>SKU Group</th>
-                    <ProdTh k="c" label="Category" />
-                    <ProdTh k="rev" label="Revenue" align="right" />
-                    <th className="text-right" style={{width: 90}}>Share</th>
-                    <ProdTh k="u" label="Units" align="right" />
-                    <ProdTh k="vel" label="Vel / mo" align="right" hint="Units per month" />
-                    <th className="text-right" title="Global penetration goal for the SKU group">Goal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(() => {
-                    const maxRevP = Math.max(1, ...repProducts.map(p => p.rev || 0));
-                    const totalShown = repProducts.reduce((s, p) => s + (p.rev || 0), 0);
-                    return repProducts.map((p, i) => {
-                      const groupSku = a.skuById.get(p.sg);
-                      const groupName = groupSku?.n || '—';
-                      const sharePct = totalShown > 0 ? (p.rev / totalShown) : 0;
-                      const goal = groupSku?.distGoal;
-                      return (
-                        <tr key={p.i} onClick={() => onPickSku && onPickSku(p.sg, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
-                          <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
-                          <td className="truncate max-w-[260px]" title={p.n}>{p.n}</td>
-                          <td className="text-slate-600">{p.b || <span className="text-slate-300">—</span>}</td>
-                          <td className="truncate max-w-[160px] text-slate-500" title={groupName}>{groupName}</td>
-                          <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{p.c}</span></td>
-                          <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(p.rev)}</td>
-                          <td className="text-right">
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex-1 h-1.5 rounded-full overflow-hidden bg-slate-100">
-                                <div className="h-full" style={{width: ((p.rev/maxRevP)*100)+'%', background: 'linear-gradient(90deg,#34d399,#047857)'}}></div>
-                              </div>
-                              <span className="font-mono tabular-nums text-[10px] text-slate-600 w-9 text-right">{fmtPct(sharePct, 1)}</span>
-                            </div>
-                          </td>
-                          <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
-                          <td className="text-right tabular-nums font-mono text-slate-500">{fmtNum(p.vel || 0, 0)}</td>
-                          <td className="text-right tabular-nums font-mono text-slate-500" title={goal != null ? `Global goal: ${(goal*100).toFixed(0)}%` : 'No goal set'}>{goal == null ? '—' : fmtPct(goal, 0)}</td>
-                        </tr>
-                      );
-                    });
-                  })()}
-                  {repProducts.length === 0 && (
-                    <tr><td colSpan={10} className="text-center text-[11px] text-slate-400 py-6">No voids — every product in the catalog has had at least one order this year.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+          <div className="max-h-[520px] overflow-auto">
+            <table className="dt">
+              <thead>
+                <tr>
+                  <th className="text-right" style={{width: 36}}>#</th>
+                  <th>SKU Group</th>
+                  <th>Category</th>
+                  <th>Tag</th>
+                  <th className="text-right">Revenue</th>
+                  <th className="text-right">Units</th>
+                  <th className="text-right">Stores</th>
+                  <th className="text-right" title="Penetration across this rep's stores">Rep %</th>
+                  <th className="text-right" title="Global penetration across the full network">Net %</th>
+                  <th className="text-right" title="Global penetration goal (from goal sheet)">Goal</th>
+                  <th className="text-right" title="Stores in this rep's book still needed to hit the goal across their base">To Goal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {repBook.topSkus.slice(0, 25).map((row, i) => {
+                  // Rep-scoped penetration: % of THIS rep's stores carrying the group.
+                  const repPenet = sel.stores ? row.stores / sel.stores : 0;
+                  const goal = row.sku.distGoal;
+                  const overGoal = goal != null && repPenet >= goal;
+                  const penetClass = repPenet>=0.7?'text-emerald-700':repPenet>=0.4?'text-amber-700':'text-rose-700';
+                  const goalClass = goal == null ? 'text-slate-400'
+                    : overGoal ? 'text-emerald-700'
+                    : (goal - repPenet) <= 0.10 ? 'text-amber-700'
+                    : 'text-rose-700';
+                  const need = goal != null ? Math.max(0, Math.ceil(goal * sel.stores) - row.stores) : null;
+                  const needClass = need == null ? 'text-slate-400' : need === 0 ? 'text-emerald-700' : need >= 10 ? 'text-rose-700' : 'text-amber-700';
+                  return (
+                    <tr key={row.sku.i} onClick={() => onPickSku && onPickSku(row.sku.i, sel ? {repFilter: sel.name, repType} : null)} className="cursor-pointer">
+                      <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                      <td className="truncate max-w-[220px]" title={row.sku.n}>{row.sku.n}</td>
+                      <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{row.sku.c}</span></td>
+                      <td><Tag tag={row.sku.tag} /></td>
+                      <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(row.rev)}</td>
+                      <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(row.u)}</td>
+                      <td className="text-right tabular-nums font-mono text-slate-500">{row.stores}/{sel.stores}</td>
+                      <td className={`text-right tabular-nums font-mono ${penetClass}`}>{fmtPct(repPenet, 0)}</td>
+                      <td className="text-right tabular-nums font-mono text-slate-500" title={`Network: ${row.sku.stores}/${a.clients.length} stores`}>{fmtPct(row.sku.distPct, 0)}</td>
+                      <td className={`text-right tabular-nums font-mono ${goalClass}`} title={goal != null ? `Global goal: ${(goal*100).toFixed(0)}%` : 'No goal set'}>
+                        {goal == null ? '—' : fmtPct(goal, 0)}
+                      </td>
+                      <td className={`text-right tabular-nums font-mono ${needClass}`} title={goal != null ? `Stores in ${sel.name}'s book still needed for ${(goal*100).toFixed(0)}% goal` : ''}>
+                        {need == null ? '—' : (need === 0 ? '✓' : '+' + need)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
