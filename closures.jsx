@@ -14,8 +14,18 @@ const { Tag } = window.BambooUI;
 //
 // This tab loads closures.json, filters by date range / rep /
 // search, and exports CSV for reporting up the chain.
+//
+// HARD FLOOR: closures dated 2026-05-03 or earlier are excluded everywhere
+// in this tab — we treat 5/3/2026 as the snapshot anchor. Only fills *after*
+// that date count as a true "void closure".
+// search, and exports CSV for reporting up the chain.
 
 function ClosuresPanel({a}) {
+  // Hard date floor — closures on or before this date are NEVER shown.
+  // The dataset includes daily diffs from earlier in the year, but for the
+  // operating definition of "void closure" we anchor to this date.
+  const MIN_CLOSURE_DATE = '2026-05-03'; // exclusive — events on 2026-05-03 are excluded too
+
   const [closures, setClosures] = useState(null);
   const [error, setError] = useState(null);
 
@@ -39,19 +49,20 @@ function ClosuresPanel({a}) {
     const today = new Date();
     const toIso = today.toISOString().slice(0, 10);
     const days = (n) => { const d = new Date(today); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
-    if (range === 'all')    return ['0000-01-01', '9999-12-31'];
-    if (range === '7d')     return [days(7), toIso];
-    if (range === '30d')    return [days(30), toIso];
-    if (range === '90d')    return [days(90), toIso];
-    if (range === 'mtd')    return [today.toISOString().slice(0,8)+'01', toIso];
+    const clamp = (from) => (from <= MIN_CLOSURE_DATE ? MIN_CLOSURE_DATE : from);
+    if (range === 'all')    return [clamp('0000-01-01'), '9999-12-31'];
+    if (range === '7d')     return [clamp(days(7)), toIso];
+    if (range === '30d')    return [clamp(days(30)), toIso];
+    if (range === '90d')    return [clamp(days(90)), toIso];
+    if (range === 'mtd')    return [clamp(today.toISOString().slice(0,8)+'01'), toIso];
     if (range === 'qtd') {
       const q = Math.floor(today.getMonth() / 3) * 3;
       const start = new Date(today.getFullYear(), q, 1);
-      return [start.toISOString().slice(0, 10), toIso];
+      return [clamp(start.toISOString().slice(0, 10)), toIso];
     }
-    if (range === 'ytd')    return [today.getFullYear() + '-01-01', toIso];
-    if (range === 'custom') return [customFrom || '0000-01-01', customTo || '9999-12-31'];
-    return ['0000-01-01', '9999-12-31'];
+    if (range === 'ytd')    return [clamp(today.getFullYear() + '-01-01'), toIso];
+    if (range === 'custom') return [clamp(customFrom || '0000-01-01'), customTo || '9999-12-31'];
+    return [clamp('0000-01-01'), '9999-12-31'];
   }, [range, customFrom, customTo]);
 
   // Build the rep dropdown from the LIVE analytics roster (all reps, even those
@@ -90,7 +101,7 @@ function ClosuresPanel({a}) {
 
   const filtered = useMemo(() => {
     if (!closures) return [];
-    let arr = closures.filter(c => c.ts >= dateFrom && c.ts <= dateTo);
+    let arr = closures.filter(c => c.ts > MIN_CLOSURE_DATE && c.ts >= dateFrom && c.ts <= dateTo);
     if (repFilter !== 'All') arr = arr.filter(c => (c[repType] || 'Unassigned') === repFilter);
     if (search) {
       const q = search.toLowerCase();
@@ -112,7 +123,7 @@ function ClosuresPanel({a}) {
   // Per-rep summary (within current date range)
   const repSummary = useMemo(() => {
     if (!closures) return [];
-    const inRange = closures.filter(c => c.ts >= dateFrom && c.ts <= dateTo);
+    const inRange = closures.filter(c => c.ts > MIN_CLOSURE_DATE && c.ts >= dateFrom && c.ts <= dateTo);
     const map = new Map();
     for (const c of inRange) {
       const k = c[repType] || 'Unassigned';
