@@ -16,23 +16,26 @@ function App() {
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Penetration goals live in a separate file so they can be regenerated
+    // independently from the dataset (see scripts/build_penetration_goals.py).
+    // The map is {sku_group_id: 0..1} keyed by SKU group ID, used globally
+    // by the SKU engine, the rep page, the VMI page, and the SKU drawer.
+    const fetchGoals = () => fetch('data/penetration_goals.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
+      .then(r => r.ok ? r.json() : {})
+      .catch(() => ({}));
+
     const useLive = window.BambooApiAdapter && typeof window.BambooApiAdapter.loadLiveDataset === 'function';
-    if (useLive) {
-      window.BambooApiAdapter.loadLiveDataset()
-        .then(setData)
-        .catch(e => {
-          console.warn('Live API failed, falling back to static dataset:', e);
-          fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
-            .then(r => r.json())
-            .then(setData)
-            .catch(err => setError(String(err)));
-        });
-    } else {
-      fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
-        .then(r => r.json())
-        .then(setData)
-        .catch(e => setError(String(e)));
-    }
+    const dsPromise = useLive
+      ? window.BambooApiAdapter.loadLiveDataset()
+          .catch(e => {
+            console.warn('Live API failed, falling back to static dataset:', e);
+            return fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'}).then(r => r.json());
+          })
+      : fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'}).then(r => r.json());
+
+    Promise.all([dsPromise, fetchGoals()])
+      .then(([ds, goals]) => setData({...ds, penetrationGoals: goals || {}}))
+      .catch(e => setError(String(e)));
   }, []);
 
   // Persisted state
