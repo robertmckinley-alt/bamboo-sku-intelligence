@@ -80,7 +80,7 @@ function buildAnalytics(data, skuWeights, storeWeights) {
     const c = m.c, s = m.s, r = m.r, u = m.u;
     if (!byClient.has(c)) byClient.set(c, []);
     byClient.get(c).push([s, r, u]);
-    if (!bySku.has(s� bySku.set(s, []);
+    if (!bySku.has(s)) bySku.set(s, []);
     bySku.get(s).push([c, r, u]);
   }
 
