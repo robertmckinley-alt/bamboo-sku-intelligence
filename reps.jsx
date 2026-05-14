@@ -114,19 +114,27 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
   const [productSort, setProductSort] = repProductSort;
   const repProducts = useMemo(() => {
     if (!sel || !repBook) return [];
-    // Missing-from-this-rep SKU group ids
-    const allGroupIds = new Set((a.skus || []).map(s => s.i));
-    const missingGroups = new Set();
-    for (const g of allGroupIds) if (!repBook.carrying.has(g)) missingGroups.add(g);
-    let arr = (a.products || []).filter(p => missingGroups.has(p.sg));
+    // Voids = individual products with NO orders this year (rev = 0 in the
+    // dataset window). These are catalog items the network hasn't moved
+    // yet — sales targets for this rep to pitch. We don't have per-product
+    // per-store attribution, so we show the global "untouched" list and
+    // rank products in SKU groups the rep already covers first (easiest
+    // add-on sale since they have foot-in-door).
+    const repGroupIds = repBook.carrying;
+    let arr = (a.products || []).filter(p => (p.rev || 0) === 0);
     const k = productSort.key, m = productSort.dir === 'asc' ? 1 : -1;
     arr.sort((x, y) => {
+      // Primary: products in rep's covered groups first
+      const xInBook = repGroupIds.has(x.sg) ? 0 : 1;
+      const yInBook = repGroupIds.has(y.sg) ? 0 : 1;
+      if (xInBook !== yInBook) return xInBook - yInBook;
+      // Secondary: user-selected sort
       const xv = x[k], yv = y[k];
       if (typeof xv === 'string') return (xv || '').localeCompare(yv || '') * m;
       return ((xv ?? 0) - (yv ?? 0)) * m;
     });
     return arr.slice(0, 25);
-  }, [sel, repBook, a.products, a.skus, productSort]);
+  }, [sel, repBook, a.products, productSort]);
 
   // Helper for the void table header — sortable click w/ arrow indicator.
   const ProdTh = ({k, label, align='left', hint}) => (
@@ -264,7 +272,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
               <h3 className="font-display text-[16px] font-semibold tracking-tight">Top 25 Voids <span className="text-slate-400 italic">— across {sel.name}'s store base ({repType === 'sr' ? 'sales rep' : 'VMI rep'})</span></h3>
-              <div className="text-[10px] font-mono text-slate-500 small-caps">individual SKUs whose SKU group is NOT carried by any of this rep's stores · click column to sort · click row to open the SKU drawer</div>
+              <div className="text-[10px] font-mono text-slate-500 small-caps">individual products with NO orders this year — pitch list, ranked with rep's covered categories first · click column to sort · click row to open the SKU drawer</div>
             </div>
             <div className="max-h-[420px] overflow-auto">
               <table className="dt">
@@ -315,7 +323,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                     });
                   })()}
                   {repProducts.length === 0 && (
-                    <tr><td colSpan={10} className="text-center text-[11px] text-slate-400 py-6">No voids — this rep's stores carry every SKU group.</td></tr>
+                    <tr><td colSpan={10} className="text-center text-[11px] text-slate-400 py-6">No voids — every product in the catalog has had at least one order this year.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -336,7 +344,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
         const crossSell= repClients.filter(c => c.storeTag === 'CROSS-SELL');
         let top = storeTagFilter
           ? repClients.filter(c => c.storeTag === storeTagFilter)
-          : repClients.slice();
+          : repClients.sl	ce();
         // Apply column sort
         const k = storeSort.key, m = storeSort.dir === 'asc' ? 1 : -1;
         top.sort((x, y) => {
