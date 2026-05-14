@@ -75,6 +75,8 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
               <Th k="u" sort={sort} setSort={setSort} label="Units" align="right" />
               <Th k="stores" sort={sort} setSort={setSort} label="Stores" align="right" />
               <Th k="distPct" sort={sort} setSort={setSort} label="Penet." align="right" />
+              <Th k="distGoal" sort={sort} setSort={setSort} label="Goal" align="right" />
+              <Th k="distGapToGoal" sort={sort} setSort={setSort} label="To Goal" align="right" />
               <Th k="unitsPerStore" sort={sort} setSort={setSort} label="U/Store" align="right" />
               <Th k="revPerStore" sort={sort} setSort={setSort} label="$/Store" align="right" />
               <Th k="velocity" sort={sort} setSort={setSort} label="Velocity" align="right" />
@@ -88,6 +90,18 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
             {sorted.map(s => {
               const dist = s.distPct;
               const distClass = dist>=0.7?'text-emerald-700':dist>=0.4?'text-amber-700':'text-rose-700';
+              // Penet. vs goal — green if at/over, amber if within 10pp, rose if further.
+              const goal = s.distGoal;
+              const overGoal = goal != null && dist >= goal;
+              const goalClass = goal == null ? 'text-slate-400'
+                : overGoal ? 'text-emerald-700'
+                : (goal - dist) <= 0.10 ? 'text-amber-700'
+                : 'text-rose-700';
+              const toGoal = s.distGapToGoal;
+              const toGoalClass = toGoal == null ? 'text-slate-400'
+                : toGoal === 0 ? 'text-emerald-700'
+                : toGoal >= 50 ? 'text-rose-700'
+                : 'text-amber-700';
               return (
                 <tr key={s.i} onClick={() => onPick(s.i)} className="cursor-pointer">
                   <td className="text-right tabular-nums font-mono text-slate-500">{s.rank}</td>
@@ -101,6 +115,12 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
                   <td className="text-right tabular-nums font-mono">{fmtN(s.u)}</td>
                   <td className="text-right tabular-nums font-mono">{s.stores}/{a.clients.length}</td>
                   <td className={`text-right tabular-nums font-mono ${distClass} ${highlight==='distPct'?'bg-emerald-50 font-semibold':''}`}>{fmtPct(s.distPct, 0)}</td>
+                  <td className={`text-right tabular-nums font-mono ${goalClass}`} title={goal != null ? `Goal: ${(goal*100).toFixed(0)}% (${s.distGoalStores} stores)` : 'No goal set'}>
+                    {goal == null ? '—' : fmtPct(goal, 0)}
+                  </td>
+                  <td className={`text-right tabular-nums font-mono ${toGoalClass}`} title={goal != null ? `Stores needed to hit ${(goal*100).toFixed(0)}% goal` : ''}>
+                    {toGoal == null ? '—' : (toGoal === 0 ? '✓' : '+' + toGoal)}
+                  </td>
                   <td className="text-right tabular-nums font-mono">{fmtN(s.unitsPerStore)}</td>
                   <td className="text-right tabular-nums font-mono">{fmt$(s.revPerStore)}</td>
                   <td className={`text-right tabular-nums font-mono ${highlight==='velocity'?'bg-emerald-50 font-semibold':''}`}>{fmtNum(s.velocity, 0)}</td>
