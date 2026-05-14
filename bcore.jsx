@@ -44,9 +44,19 @@ function normalize(arr, getter) {
 }
 
 function buildAnalytics(data, skuWeights, storeWeights) {
-  const { clients, skus, matrix, meta, products } = data;
+  const { clients, skus, matrix, meta, products, penetrationGoals } = data;
   const months = meta.months;
   const totalStores = clients.length;
+
+  // Global penetration goals — {sku_group_id (string) -> goal (0..1)}.
+  // Loaded once in main.jsx from data/penetration_goals.json; we read it
+  // here so distGoal lives on every SKU object alongside distPct. Anywhere
+  // the app already shows distPct can now show distGoal for free.
+  const goalLookup = penetrationGoals || {};
+  const getGoal = (id) => {
+    const v = goalLookup[String(id)];
+    return (typeof v === 'number' && isFinite(v)) ? v : null;
+  };
 
   // Index matrix by sku and by client
   const byClient = new Map();
@@ -79,6 +89,14 @@ function buildAnalytics(data, skuWeights, storeWeights) {
     const reorderProxy = stores ? Math.min(1, avgOrders / 12) : 0; // 12 = "weekly orders ≈ saturated"
     // Estimated opportunity: if we placed it in distGap stores at the avg revPerStore, what's the headroom?
     const oppEst = distGap * revPerStore * 0.5; // 50% capture assumption
+    // Penetration goal (global, from the goal sheet). distGoalStores is the
+    // absolute target count of stores; distGapToGoal is how many *more*
+    // stores must be added to hit the goal (clamped at 0 — over-goal is shown
+    // as a 0 gap, not a negative).
+    const distGoal = getGoal(s.i);
+    const distGoalStores = distGoal != null ? Math.ceil(distGoal * totalStores) : null;
+    const distGapToGoal = distGoal != null ? Math.max(0, distGoalStores - stores) : null;
+    const distVsGoal = distGoal != null ? (distPct - distGoal) : null;
     return {
       ...s,
       stores,
@@ -86,6 +104,10 @@ function buildAnalytics(data, skuWeights, storeWeights) {
       revPerStore,
       distPct,
       distGap,
+      distGoal,
+      distGoalStores,
+      distGapToGoal,
+      distVsGoal,
       velocity,
       avgOrdersPerBuyer: avgOrders,
       reorderProxy,
