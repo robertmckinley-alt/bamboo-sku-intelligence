@@ -11,7 +11,6 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
   const filtered = useMemo(() => {
     let f = a.skus;
     if (catFilter && catFilter !== 'All') f = f.filter(s => s.c === catFilter);
-    if (tagFilter && tagFilter !== 'All') f = f.filter(s => s.tag === tagFilter);
     if (search) {
       const q = search.toLowerCase();
       f = f.filter(s => s.n.toLowerCase().includes(q) || s.c.toLowerCase().includes(q));
@@ -30,12 +29,6 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
     });
     return arr;
   }, [filtered, sort]);
-
-  const tagCounts = useMemo(() => {
-    const c = {All: a.skus.length};
-    for (const s of a.skus) c[s.tag] = (c[s.tag]||0)+1;
-    return c;
-  }, [a]);
 
   const VIEWS = ['Revenue','Velocity','Distribution','Opportunity'];
   const highlight = view === 'Revenue' ? 'rev' : view === 'Velocity' ? 'velocity' : view === 'Distribution' ? 'distPct' : 'oppEst';
@@ -57,10 +50,6 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
           </div>
           <span className="text-[11px] text-slate-500 font-mono tabular-nums ml-auto">{sorted.length} SKUs</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Tag</span>
-          <TagChips options={['All','SCALE','PUSH','MONITOR','FIX','CUT']} value={tagFilter} onChange={setTagFilter} counts={tagCounts} />
-        </div>
       </div>
       <div className="overflow-auto flex-1">
         <table className="dt">
@@ -69,8 +58,6 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
               <Th k="rank" sort={sort} setSort={setSort} label="#" align="right" w={36} />
               <Th k="n" sort={sort} setSort={setSort} label="SKU" />
               <Th k="c" sort={sort} setSort={setSort} label="Category" />
-              <Th k="score" sort={sort} setSort={setSort} label="Score" align="right" />
-              <Th k="tag" sort={sort} setSort={setSort} label="Tag" />
               <Th k="rev" sort={sort} setSort={setSort} label="Revenue" align="right" />
               <Th k="u" sort={sort} setSort={setSort} label="Units" align="right" />
               <Th k="stores" sort={sort} setSort={setSort} label="Stores" align="right" />
@@ -107,10 +94,6 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
                   <td className="text-right tabular-nums font-mono text-slate-500">{s.rank}</td>
                   <td className="truncate max-w-[280px]">{s.n}</td>
                   <td className="text-slate-600">{s.c}</td>
-                  <td className="text-right" style={{minWidth:110}}>
-                    <ScoreBar score={s.score} height={4} />
-                  </td>
-                  <td><Tag tag={s.tag} /></td>
                   <td className={`text-right tabular-nums font-mono ${highlight==='rev'?'bg-emerald-50 font-semibold':''}`}>{fmt$(s.rev)}</td>
                   <td className="text-right tabular-nums font-mono">{fmtN(s.u)}</td>
                   <td className="text-right tabular-nums font-mono">{s.stores}/{a.clients.length}</td>
