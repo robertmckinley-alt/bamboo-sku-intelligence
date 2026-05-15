@@ -5,7 +5,7 @@ const { Tag, TagChips, MiniBar, ScoreBar, Th } = window.BambooUI;
 
 // ============== Master SKU Table ==============
 function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, tagFilter, setTagFilter, view, setView}) {
-  const [sort, setSort] = useState({key:'rank', dir:'asc'});
+  const [sort, setSort] = useState({key:'rev', dir:'desc'});
   const cats = useMemo(() => ['All', ...new Set(a.skus.map(s => s.c))].sort(), [a]);
 
   const filtered = useMemo(() => {
@@ -55,7 +55,7 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
         <table className="dt">
           <thead>
             <tr>
-              <Th k="rank" sort={sort} setSort={setSort} label="#" align="right" w={36} />
+              <th className="text-right" style={{width: 36}}>#</th>
               <Th k="n" sort={sort} setSort={setSort} label="SKU" />
               <Th k="c" sort={sort} setSort={setSort} label="Category" />
               <Th k="rev" sort={sort} setSort={setSort} label="Revenue" align="right" />
@@ -74,7 +74,7 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
             </tr>
           </thead>
           <tbody>
-            {sorted.map(s => {
+            {sorted.map((s, i) => {
               const dist = s.distPct;
               const distClass = dist>=0.7?'text-emerald-700':dist>=0.4?'text-amber-700':'text-rose-700';
               // Penet. vs goal — green if at/over, amber if within 10pp, rose if further.
@@ -91,7 +91,7 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
                 : 'text-amber-700';
               return (
                 <tr key={s.i} onClick={() => onPick(s.i)} className="cursor-pointer">
-                  <td className="text-right tabular-nums font-mono text-slate-500">{s.rank}</td>
+                  <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                   <td className="truncate max-w-[280px]">{s.n}</td>
                   <td className="text-slate-600">{s.c}</td>
                   <td className={`text-right tabular-nums font-mono ${highlight==='rev'?'bg-emerald-50 font-semibold':''}`}>{fmt$(s.rev)}</td>
