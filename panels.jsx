@@ -138,11 +138,9 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
     if (onAddCallSheet) onAddCallSheet([...pipelineIds]);
   };
 
-  const action = sku.tag === 'SCALE' ? {label:'EXPAND', text:`Push into the ${sku.distGap} stores not yet carrying. Velocity strong, reorder solid.`} :
-                 sku.tag === 'PUSH'  ? {label:'PUSH', text:`High score, low distribution. Estimated $${fmtN(sku.oppEst)} captured by closing the gap.`} :
-                 sku.tag === 'FIX'   ? {label:'FIX', text:'Reorder rate or velocity weak. Investigate price, packaging, or training before further placements.'} :
-                 sku.tag === 'CUT'   ? {label:'CUT', text:'Bottom of score distribution. Consider deprecation or repositioning.'} :
-                 {label:'MONITOR', text:'Steady performer. Watch for movement up or down.'};
+  const action = sku.distGap > 0
+    ? {label:'EXPAND', text:`Pitch into the ${sku.distGap} stores not yet carrying. Projected lift: ${fmt$(sku.oppEst)}.`}
+    : {label:'COVERED', text:'Full distribution across the network. Focus on velocity and reorder cadence.'};
 
   return (
     <Drawer onClose={onClose} width={1100}>
@@ -150,7 +148,6 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-mono text-slate-500 small-caps">sku #{sku.rank} · {sku.c}</span>
-            <Tag tag={sku.tag} />
             <span className="text-[10px] font-mono text-slate-400">percentile {fmtPct(sku.percentile,0)}</span>
           </div>
           <h2 className="font-display text-[20px] font-semibold tracking-tight leading-tight">{sku.n}</h2>
@@ -176,10 +173,9 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
       </div>
 
       <div className="px-5 py-3 grid grid-cols-6 gap-2 text-[11px] border-b border-slate-200 bg-slate-50">
-        <Stat l="Score" v={sku.score.toFixed(0)} bar={<ScoreBar score={sku.score} height={4}/>} />
         <Stat l="Revenue" v={fmt$(sku.rev)} accent />
         <Stat l="Units" v={fmtN(sku.u)} />
-        <Stat l="Distribution" v={fmtPct(sku.distPct,0)} sub={`${sku.stores}/${a.clients.length}`} />
+        <Stat l="Distribution" v={fmtPct(sku.distPct,0)} sub={sku.distGoal != null ? `${sku.stores}/${a.clients.length} · goal ${(sku.distGoal*100).toFixed(0)}%` : `${sku.stores}/${a.clients.length}`} accentColor={sku.distGoal != null && sku.distPct >= sku.distGoal ? 'text-emerald-700' : (sku.distGoal != null && (sku.distGoal - sku.distPct) > 0.10 ? 'text-rose-700' : undefined)} />
         <Stat l="Velocity" v={fmtNum(sku.velocity,0)} sub="u/store/mo" />
         <Stat l="$ / store" v={fmt$(sku.revPerStore)} sub={`${fmtN(sku.unitsPerStore)}u/store`} />
         <Stat l="Reorder index" v={sku.reorderProxy.toFixed(2)} />
@@ -571,7 +567,6 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
                 <Th k="rank" sort={missingSort} setSort={setMissingSort} label="Rank" align="right" />
                 <Th k="n" sort={missingSort} setSort={setMissingSort} label="SKU" align="left" />
                 <Th k="c" sort={missingSort} setSort={setMissingSort} label="Cat" align="left" />
-                <Th k="tag" sort={missingSort} setSort={setMissingSort} label="Tag" align="left" />
                 <Th k="rps" sort={missingSort} setSort={setMissingSort} label="Avg $/store" align="right" />
                 <Th k="est" sort={missingSort} setSort={setMissingSort} label="Est $ here" align="right" />
                 <Th k="sug" sort={missingSort} setSort={setMissingSort} label="Sugg u" align="right" />
@@ -587,7 +582,6 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
                   <td className="text-right tabular-nums font-mono text-slate-500">#{sku.rank}</td>
                   <td onClick={() => onPickSku(sku.i)} className="cursor-pointer truncate max-w-[260px]"><span className="hover:underline">{sku.n}</span></td>
                   <td className="text-slate-500">{sku.c}</td>
-                  <td><Tag tag={sku.tag} /></td>
                   <td className="text-right tabular-nums font-mono">{fmt$(sku.revPerStore)}</td>
                   <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(est)}</td>
                   <td className="text-right tabular-nums font-mono">{suggestedUnits}</td>
@@ -702,7 +696,6 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
                 <td className="text-slate-500">{sku.c}</td>
                 <td className="text-right tabular-nums font-mono">{fmt$(r)}</td>
                 <td className="text-right tabular-nums font-mono text-slate-500">{fmtN(u)}</td>
-                <td><Tag tag={sku.tag} /></td>
               </tr>
             ))}
           </tbody>
@@ -743,7 +736,6 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
   const skus = useMemo(() => {
     let arr = [...a.skus];
     if (catFilter !== 'All') arr = arr.filter(s => s.c === catFilter);
-    if (skuTagFilter !== 'All') arr = arr.filter(s => s.tag === skuTagFilter);
     if (skuSearch) {
       const q = skuSearch.toLowerCase();
       arr = arr.filter(s => s.n.toLowerCase().includes(q));
@@ -927,9 +919,6 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
           </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">SKU tag</span>
-          <TagChips options={['All','SCALE','PUSH','MONITOR','FIX','CUT']} value={skuTagFilter} onChange={setSkuTagFilter} />
-          <span className="h-4 w-px bg-slate-200 mx-1"></span>
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Store tag</span>
           <TagChips options={['All','CALL NOW','CROSS-SELL','HIGH UPSIDE','LOW PRIORITY','AT RISK']} value={storeTagFilter} onChange={setStoreTagFilter} />
         </div>
