@@ -1,0 +1,10 @@
+{
+  "suppress": [
+    {
+      "client": "[HPTM] Happy Time Mount Vernon",
+      "sku": "CBN/THC 1:1 Gummiez",
+      "reason": "ordered 2/27/26 but Excel showed $0 due to SKU remap"
+    }
+  ],
+  "_doc": "Each suppress entry: client name normalized (strip \u0027 - VMI\u0027/\u00271WT\u0027/\u0027NBA\u0027), sku name exact. Both sides matched case-insensitively. Add (client, sku) here for false-positive closures caused by pre-5/3 SKU rename/remap."
+}
