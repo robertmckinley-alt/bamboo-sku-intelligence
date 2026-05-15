@@ -68,11 +68,6 @@ function CategoryCard({a, cat, onPickSku, onSelect, selected}) {
           </div>
         </div>
       </div>
-      <div className="px-4 py-2 border-b border-slate-200 flex flex-wrap gap-1.5">
-        {Object.entries(stats.tagCounts).filter(([k,v]) => v > 0).map(([k,v]) => (
-          <Tag key={k} tag={k} />
-        )).map((el, i) => <span key={i} className="inline-flex items-center gap-1">{el}<span className="text-[10px] font-mono text-slate-400 tabular-nums">{stats.tagCounts[el.props.tag]}</span></span>)}
-      </div>
       <table className="dt">
         <tbody>
           {stats.top.map((s, i) => (
@@ -90,7 +85,7 @@ function CategoryCard({a, cat, onPickSku, onSelect, selected}) {
 
 // Detailed leaderboard for a selected category
 function CategoryLeaderboard({a, cat, onPickSku}) {
-  const [sort, setSort] = useState({key: 'score', dir: 'desc'});
+  const [sort, setSort] = useState({key: 'rev', dir: 'desc'});
   const skus = useMemo(() => {
     let arr = a.skus.filter(s => s.c === cat);
     const k = sort.key;
@@ -115,7 +110,7 @@ function CategoryLeaderboard({a, cat, onPickSku}) {
       <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
         <div>
           <h3 className="font-display text-[16px] font-semibold tracking-tight">{cat} <span className="text-slate-400 italic">— leaderboard</span></h3>
-          <div className="text-[10px] font-mono text-slate-500 small-caps">top 25 by score</div>
+          <div className="text-[10px] font-mono text-slate-500 small-caps">top 25 by revenue</div>
         </div>
       </div>
       <div className="max-h-[480px] overflow-auto">
@@ -124,8 +119,6 @@ function CategoryLeaderboard({a, cat, onPickSku}) {
             <tr>
               <Th k="rank" label="#" align="right" />
               <Th k="n" label="SKU" />
-              <Th k="score" label="Score" align="right" />
-              <Th k="tag" label="Tag" />
               <Th k="rev" label="Revenue" align="right" />
               <Th k="u" label="Units" align="right" />
               <Th k="stores" label="Stores" align="right" />
@@ -138,8 +131,6 @@ function CategoryLeaderboard({a, cat, onPickSku}) {
               <tr key={s.i} onClick={() => onPickSku(s.i)} className="cursor-pointer">
                 <td className="text-right tabular-nums font-mono text-slate-500">{s.rank}</td>
                 <td className="truncate max-w-[260px]">{s.n}</td>
-                <td className="text-right" style={{minWidth:120}}><ScoreBar score={s.score} height={5} /></td>
-                <td><Tag tag={s.tag} /></td>
                 <td className="text-right tabular-nums font-mono">{fmt$(s.rev)}</td>
                 <td className="text-right tabular-nums font-mono text-slate-500">{fmtN(s.u)}</td>
                 <td className="text-right tabular-nums font-mono">{s.stores}/{a.clients.length}</td>
