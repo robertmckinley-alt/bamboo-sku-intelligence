@@ -23,10 +23,6 @@ function App() {
     const fetchGoals = () => fetch('data/penetration_goals.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
       .then(r => r.ok ? r.json() : {})
       .catch(() => ({}));
-    // Category overrides — same file pattern, used to correct miscategorized SKU groups
-    const fetchOverrides = () => fetch('data/category_overrides.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
-      .then(r => r.ok ? r.json() : {})
-      .catch(() => ({}));
 
     const useLive = window.BambooApiAdapter && typeof window.BambooApiAdapter.loadLiveDataset === 'function';
     const dsPromise = useLive
@@ -37,8 +33,8 @@ function App() {
           })
       : fetch('data/dataset.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'}).then(r => r.json());
 
-    Promise.all([dsPromise, fetchGoals(), fetchOverrides()])
-      .then(([ds, goals, overrides]) => setData({...ds, penetrationGoals: goals || {}, categoryOverrides: overrides || {}}))
+    Promise.all([dsPromise, fetchGoals()])
+      .then(([ds, goals]) => setData({...ds, penetrationGoals: goals || {}}))
       .catch(e => setError(String(e)));
   }, []);
 
@@ -255,25 +251,15 @@ function RepLeaderboard({a, onPickClient, onExportRep}) {
 }
 
 function TagSummary({a}) {
-  const skuTags = {};
-  for (const s of a.skus) skuTags[s.tag] = (skuTags[s.tag]||0)+1;
   const storeTags = {};
   for (const c of a.clients) storeTags[c.storeTag] = (storeTags[c.storeTag]||0)+1;
   return (
     <div className="border-t border-slate-200">
       <h3 className="px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-slate-700 small-caps flex items-center gap-2">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        Tag Summary
+        Retailer Tags
       </h3>
       <div className="px-2 pb-3 space-y-1">
-        <div className="text-[9px] uppercase text-slate-400 tracking-wider mt-1 px-1 small-caps">SKUs</div>
-        {['SCALE','PUSH','MONITOR','FIX','CUT'].map(t => (
-          <div key={t} className="flex justify-between items-center px-1.5">
-            <Tag tag={t} />
-            <span className="font-mono tabular-nums text-[11px] font-semibold text-slate-700">{skuTags[t]||0}</span>
-          </div>
-        ))}
-        <div className="text-[9px] uppercase text-slate-400 tracking-wider mt-2 px-1 small-caps">Retailers</div>
         {['CALL NOW','CROSS-SELL','HIGH UPSIDE','LOW PRIORITY','AT RISK'].map(t => (
           <div key={t} className="flex justify-between items-center px-1.5">
             <Tag tag={t} />
