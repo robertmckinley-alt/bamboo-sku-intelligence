@@ -21,7 +21,7 @@ const { Tag } = window.BambooUI;
 //
 // This tab loads closures.json, filters by date range / rep /
 // search, and exports CSV for reporting up the chain.
-const MIN_CLOSURE_DATE = '2026-05-13';  // exclusive — true voids start the day after
+const MIN_CLOSURE_DATE = '2026-05-02';  // exclusive — closures dated 5/3 or later are true post-baseline voids
 
 function ClosuresPanel({a}) {
   const [closures, setClosures] = useState(null);
@@ -38,7 +38,15 @@ function ClosuresPanel({a}) {
   useEffect(() => {
     fetch('data/closures.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
       .then(r => r.ok ? r.json() : [])
-      .then(setClosures)
+      .then(d => {
+        // Support both array-of-objects and compact {cols, rows} form
+        if (d && d.cols && d.rows) {
+          const c = d.cols;
+          setClosures(d.rows.map(row => Object.fromEntries(c.map((k, i) => [k, row[i]]))));
+        } else {
+          setClosures(d || []);
+        }
+      })
       .catch(e => { setError(String(e)); setClosures([]); });
   }, []);
 
