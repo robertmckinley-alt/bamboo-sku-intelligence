@@ -4,7 +4,7 @@ const { fmt$, fmtN, fmtPct } = window.BambooCore;
 const { Tag } = window.BambooUI;
 
 // ============================================================
-//   CLOSURES TAB â track "void closures" (new SKU placements)
+//   CLOSURES TAB — track "void closures" (new SKU placements)
 // ============================================================
 //
 // A "closure" = a (store, SKU group) pair that had zero revenue
@@ -12,7 +12,7 @@ const { Tag } = window.BambooUI;
 // diff cron (scripts/diff_closures.py) and appended to
 // data/closures.json with both Sales Rep and VMI Rep attribution.
 //
-// MIN_CLOSURE_DATE is a hard floor â events on or before this date
+// MIN_CLOSURE_DATE is a hard floor — events on or before this date
 // are discarded everywhere in the UI. The 5/13 bootstrap run
 // emitted ~12k events for already-active (store, SKU) pairs
 // because no previous snapshot existed; those are NOT true voids
@@ -21,7 +21,7 @@ const { Tag } = window.BambooUI;
 //
 // This tab loads closures.json, filters by date range / rep /
 // search, and exports CSV for reporting up the chain.
-const MIN_CLOSURE_DATE = '2026-05-02';  // exclusive â closures dated 5/3 or later are true post-baseline voids
+const MIN_CLOSURE_DATE = '2026-05-02';  // exclusive — closures dated 5/3 or later are true post-baseline voids
 
 function ClosuresPanel({a}) {
   const [closures, setClosures] = useState(null);
@@ -153,7 +153,7 @@ function ClosuresPanel({a}) {
   const click = (k) => setSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}));
   const Th = ({k, label, align='left', hint}) => (
     <th className={`sortable ${align==='right'?'text-right':'text-left'}`} title={hint} onClick={() => click(k)}>
-      <span className="inline-flex items-center gap-1">{label}<span className="text-[8px] text-slate-300">{sort.key===k?(sort.dir==='asc'?'â²':'â¼'):'â´â¾'}</span></span>
+      <span className="inline-flex items-center gap-1">{label}<span className="text-[8px] text-slate-300">{sort.key===k?(sort.dir==='asc'?'▲':'▼'):'▴▾'}</span></span>
     </th>
   );
 
@@ -176,7 +176,7 @@ function ClosuresPanel({a}) {
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   };
 
-  if (closures === null) return <div className="p-6 text-[12px] text-slate-500 font-mono">Loading closuresâ¦</div>;
+  if (closures === null) return <div className="p-6 text-[12px] text-slate-500 font-mono">Loading closures…</div>;
 
   const empty = closures.length === 0;
 
@@ -185,16 +185,16 @@ function ClosuresPanel({a}) {
       <div>
         <div className="flex items-baseline justify-between mb-2 gap-3 flex-wrap">
           <div>
-            <h2 className="font-display text-[18px] font-semibold tracking-tight">Void Closures <span className="italic text-emerald-700">â new SKU placements</span></h2>
+            <h2 className="font-display text-[18px] font-semibold tracking-tight">Void Closures <span className="italic text-emerald-700">— new SKU placements</span></h2>
             <div className="text-[10px] font-mono text-slate-500 small-caps mt-0.5">
               {empty
-                ? `no closures recorded yet â ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster Â· daily refresh will populate this list`
-                : `${fmtN(closures.length)} total closures recorded Â· ${fmtN(filtered.length)} in current view Â· ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster`}
+                ? `no closures recorded yet — ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster · daily refresh will populate this list`
+                : `${fmtN(closures.length)} total closures recorded · ${fmtN(filtered.length)} in current view · ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster`}
             </div>
           </div>
           <button onClick={exportCsv} disabled={filtered.length === 0}
                   className="btn btn-emerald" title="Download filtered rows as CSV">
-            â Export CSV ({filtered.length})
+            ↓ Export CSV ({filtered.length})
           </button>
         </div>
 
@@ -215,7 +215,7 @@ function ClosuresPanel({a}) {
                 <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} className="text-[11px]" />
               </span>
             )}
-            <span className="text-[10px] font-mono text-slate-400 ml-2">{dateFrom} â {dateTo}</span>
+            <span className="text-[10px] font-mono text-slate-400 ml-2">{dateFrom} → {dateTo}</span>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
@@ -230,10 +230,10 @@ function ClosuresPanel({a}) {
               {repOptions.map(r => {
                 if (r === 'All') return <option key={r} value={r}>{repType==='sr'?'All sales reps':'All VMI reps'} ({fmtN(repOptions.length - 1)})</option>;
                 const cnt = repStoreCounts[r];
-                return <option key={r} value={r}>{r}{cnt ? ` â ${cnt} stores` : ''}</option>;
+                return <option key={r} value={r}>{r}{cnt ? ` — ${cnt} stores` : ''}</option>;
               })}
             </select>
-            <input type="search" placeholder="Search store, SKU, or categoryâ¦"
+            <input type="search" placeholder="Search store, SKU, or category…"
                    value={search} onChange={e => setSearch(e.target.value)}
                    className="text-[11px] flex-1 min-w-[200px]" />
           </div>
@@ -269,7 +269,7 @@ function ClosuresPanel({a}) {
           <h3 className="font-display text-[16px] font-semibold text-slate-700 mb-2">No closures recorded yet</h3>
           <p className="text-[12px] text-slate-500 max-w-md mx-auto leading-relaxed">
             Closures appear here once the daily data refresh detects new placements.
-            Wire <span className="font-mono">scripts/diff_closures.py</span> into your cron job â it compares yesterday's dataset against today's and appends any new (store Ã SKU group) placements to <span className="font-mono">data/closures.json</span>.
+            Wire <span className="font-mono">scripts/diff_closures.py</span> into your cron job — it compares yesterday's dataset against today's and appends any new (store × SKU group) placements to <span className="font-mono">data/closures.json</span>.
           </p>
         </div>
       ) : (
@@ -279,7 +279,7 @@ function ClosuresPanel({a}) {
             <div className="px-4 py-2.5 border-b border-slate-200 bg-slate-50">
               <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps flex items-center gap-2">
                 Closure log
-                <span className="text-slate-400 normal-case font-normal">â click column to sort</span>
+                <span className="text-slate-400 normal-case font-normal">— click column to sort</span>
                 <span className="ml-auto font-mono text-slate-700">{filtered.length} rows</span>
               </h3>
             </div>
@@ -319,7 +319,7 @@ function ClosuresPanel({a}) {
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden h-fit">
             <div className="px-3 py-2.5 border-b border-slate-200 bg-slate-50">
               <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
-                {repType === 'sr' ? 'Sales Reps' : 'VMI Reps'} <span className="text-slate-400 normal-case font-normal">â in range</span>
+                {repType === 'sr' ? 'Sales Reps' : 'VMI Reps'} <span className="text-slate-400 normal-case font-normal">— in range</span>
               </h3>
             </div>
             <div className="divide-y divide-slate-100 max-h-[70vh] overflow-auto">
@@ -343,7 +343,7 @@ function ClosuresPanel({a}) {
                         <span className="font-mono tabular-nums text-[11px] text-slate-700">{r.count}</span>
                       </div>
                       <div className="text-[10px] font-mono text-slate-500 tabular-nums">
-                        {r._empty ? <span className="text-slate-400">no closures in range Â· {repStoreCounts[r.name] || 0} stores</span> : <>{fmt$(r.rev)} Â· {r.stores} stores Â· {r.skus} skus</>}
+                        {r._empty ? <span className="text-slate-400">no closures in range · {repStoreCounts[r.name] || 0} stores</span> : <>{fmt$(r.rev)} · {r.stores} stores · {r.skus} skus</>}
                       </div>
                     </button>
                   );
