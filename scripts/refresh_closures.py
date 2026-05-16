@@ -25,9 +25,56 @@ import json, os, re, sys, datetime, pathlib, urllib.request
 
 API_URL = 'https://api-intelligence.getbamboo.com/api/reports'
 
-ROOT          = pathlib.Path(__file__).resolve().parent.parent
-SNAPSHOT_PATH = ROOT / 'data' / 'api-snapshot.json'
-CLOSURES_PATH = ROOT / 'data' / 'closures.json'
+ROOT           = pathlib.Path(__file__).resolve().parent.parent
+SNAPSHOT_PATH  = ROOT / 'data' / 'api-snapshot.json'
+CLOSURES_PATH  = ROOT / 'data' / 'closures.json'
+OVERRIDES_PATH = ROOT / 'data' / 'closure-overrides.json'
+
+# Compact JSON format keys (matches build_closures_from_baseline.py output)
+COMPACT_COLS = ['ts','clientName','skuName','category','rev','units','sr','vr']
+
+_NORM_SUFFIX_RE = re.compile(r'\s*-\s*(VMI|1WT|NBA)\s*$', re.I)
+def norm_client(n: str) -> str:
+    """Match the client-name normalization used by build_closures_from_baseline.py
+    so suppressions written against the canonical name catch all rename variants."""
+    s = n or ''
+    for _ in range(3):
+        s = _NORM_SUFFIX_RE.sub('', s)
+    return s.strip()
+
+def load_closures(path: pathlib.Path) -> list[dict]:
+    """Read closures.json. Supports both legacy [list-of-dicts] and compact
+    {cols, rows} formats. Always returns a list of dicts."""
+    if not path.exists():
+        return []
+    try:
+        d = json.loads(path.read_text() or '[]')
+    except Exception:
+        return []
+    if isinstance(d, dict) and 'cols' in d and 'rows' in d:
+        cols = d['cols']
+        return [dict(zip(cols, row)) for row in d['rows']]
+    return d or []
+
+def save_closures(path: pathlib.Path, items: list[dict]) -> None:
+    """Write closures.json in compact {cols, rows} format."""
+    rows = [[c.get(k) for k in COMPACT_COLS] for c in items]
+    out = {'cols': COMPACT_COLS, 'rows': rows}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(out, separators=(',', ':')) + '\n')
+
+def load_overrides(path: pathlib.Path) -> set[tuple[str, str]]:
+    """Read closure-overrides.json. Returns {(normalized_client_name, sku_name_lower)}."""
+    if not path.exists():
+        return set()
+    try:
+        d = json.loads(path.read_text() or '{}')
+    except Exception:
+        return set()
+    out = set()
+    for o in d.get('suppress', []):
+        out.add((norm_client(o.get('client', '')), (o.get('sku', '') or '').lower().strip()))
+    return out
 
 # Mirror the trade-sample filter from apiAdapter.jsx
 TS_RE = re.compile(r'(trade\s*sample)|(^|[^A-Za-z0-9])TS([^A-Za-z0-9]|$)', re.I)
@@ -141,19 +188,8 @@ def infer_top_category(name: str) -> str:
 
 
 def diff(prev_api: dict | None, curr_api: dict, today: str) -> list[dict]:
-    # SAFETY GUARD: if there's no previous snapshot, we CANNOT distinguish a
-    # true void closure from a pair that's been ordering all year. The very
-    # first run of this script (2026-05-13) emitted ~12k bogus "closures"
-    # because prev_api was None - every active (client, SKU) pair got logged.
-    # Refuse to bootstrap into closures.json: just save today's snapshot and
-    # let tomorrow's run produce the first real diff.
-    if prev_api is None:
-        print("  refusing to bootstrap closures with no previous snapshot - "
-              "today's snapshot will be saved for tomorrow's diff")
-        return []
-
     curr_sales = name_keyed_sales(curr_api)
-    prev_sales = name_keyed_sales(prev_api)
+    prev_sales = name_keyed_sales(prev_api) if prev_api else {}
     clients    = client_lookup(curr_api)
     perf       = perf_category_lookup(curr_api)
 
@@ -200,21 +236,27 @@ def main() -> int:
     new = diff(prev_api, curr_api, today)
     print(f"  detected {len(new)} new (client × SKU group) placements vs previous snapshot")
 
-    # Append to closures.json (idempotent against re-runs on the same day)
-    existing = []
-    if CLOSURES_PATH.exists():
-        try:
-            existing = json.loads(CLOSURES_PATH.read_text() or '[]')
-        except Exception:
-            existing = []
+    # Append to closures.json (idempotent against re-runs on the same day).
+    # closures.json may be either legacy [list-of-dicts] or compact {cols, rows};
+    # load_closures handles both. save_closures always writes compact.
+    existing = load_closures(CLOSURES_PATH)
+
+    # Apply manual suppression overrides (closure-overrides.json) — drops
+    # (client, sku) pairs the user has flagged as false-positives.
+    overrides = load_overrides(OVERRIDES_PATH)
+    if overrides:
+        before = len(new)
+        new = [c for c in new
+               if (norm_client(c['clientName']), (c['skuName'] or '').lower().strip()) not in overrides]
+        if before != len(new):
+            print(f"  suppressed {before - len(new)} closure(s) via closure-overrides.json")
 
     seen = {(e['ts'], e['clientName'], e['skuName']) for e in existing}
     fresh = [c for c in new if (c['ts'], c['clientName'], c['skuName']) not in seen]
     print(f"  {len(fresh)} fresh (after de-dup) -> total {len(existing) + len(fresh)}")
 
     combined = existing + fresh
-    CLOSURES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CLOSURES_PATH.write_text(json.dumps(combined, separators=(',', ':')) + '\n')
+    save_closures(CLOSURES_PATH, combined)
 
     # Write today's snapshot for tomorrow's diff
     SNAPSHOT_PATH.write_text(json.dumps(curr_api, separators=(',', ':')))
