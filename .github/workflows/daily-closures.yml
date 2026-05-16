@@ -53,6 +53,6 @@ jobs:
             exit 0
           fi
           STAMP="$(date -u +'%Y-%m-%d')"
-          NEW_CLOSURES="$(python -c 'import json; d=json.load(open("data/closures.json")); from datetime import datetime, timezone; today=datetime.now(timezone.utc).date().isoformat(); print(sum(1 for c in d if c["ts"]==today))')"
+          NEW_CLOSURES="$(python -c 'import json; from datetime import datetime, timezone; d=json.load(open("data/closures.json")); today=datetime.now(timezone.utc).date().isoformat(); rows = ([dict(zip(d["cols"], r)) for r in d["rows"]] if isinstance(d, dict) and "cols" in d else d); print(sum(1 for c in rows if c.get("ts")==today))')"
           git commit -m "Daily closures refresh — ${STAMP} (+${NEW_CLOSURES} closures today)"
           git push
