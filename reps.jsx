@@ -169,7 +169,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
       {sel && repBook && (
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-            <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— top SKU groups</span></h3>
+            <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— all SKU groups</span></h3>
             <div className="text-[10px] font-mono text-slate-500 small-caps">attributed via this {repType === 'sr' ? 'sales rep' : 'VMI rep'}'s clients · click to open</div>
           </div>
           <div className="max-h-[520px] overflow-auto">
@@ -189,7 +189,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                 </tr>
               </thead>
               <tbody>
-                {repBook.topSkus.slice(0, 25).map((row, i) => {
+                {repBook.topSkus.map((row, i) => {
                   // Rep-scoped penetration: % of THIS rep's stores carrying the group.
                   const repPenet = sel.stores ? row.stores / sel.stores : 0;
                   const goal = row.sku.distGoal;
