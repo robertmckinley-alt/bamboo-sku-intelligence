@@ -81,6 +81,21 @@
     const keepRetail = retailCats.map(r => !shouldDrop(r[1]));
     const keepProd   = productsD.map(p => !shouldDrop(p[1]) && (p[3] == null || keepRetail[p[3]] !== false));
 
+    // ----- TS-ONLY CLIENT FILTER -----
+    // A store whose entire category_client_sales footprint falls in
+    // trade-sample (TS) performance categories has only ever received free
+    // samples — it is not a real revenue account. Drop it from every report.
+    // Self-updating: if such a store later logs a non-TS (real) purchase it
+    // reappears automatically on the next API refresh.
+    const _ccsRows    = api.facts.category_client_sales;
+    const _cliHasAny  = new Set();   // client idx -> has any category sale
+    const _cliHasKept = new Set();   // client idx -> has any non-TS category sale
+    for (let i = 0; i < _ccsRows.row.length; i++) {
+      _cliHasAny.add(_ccsRows.row[i]);
+      if (keepPerf[_ccsRows.col[i]]) _cliHasKept.add(_ccsRows.row[i]);
+    }
+    const isTsOnlyClient = (ci) => _cliHasAny.has(ci) && !_cliHasKept.has(ci);
+
     // Re-index surviving perf categories (SKUs) + build name → new index lookup
     const skuRemap = new Map();
     const filteredPerfCats = [];
@@ -141,13 +156,23 @@
     // Strip " - House" / " - house" suffix to fold house accounts into the main rep.
     const normRep = (rn) => (rn || '').replace(/\s*-\s*house\s*$/i, '').trim();
 
-    const clients = clientsD.map((row, i) => {
+    // Build a contiguous re-index for surviving (non-TS-only) clients so the
+    // matrix and every clients[] lookup stay consistent after the drop.
+    const clientRemap = new Map();   // old client idx -> new client idx
+    clientsD.forEach((row, oldI) => {
+      if (!isTsOnlyClient(oldI)) clientRemap.set(oldI, clientRemap.size);
+    });
+
+    const clients = [];
+    clientsD.forEach((row, oldI) => {
+      if (isTsOnlyClient(oldI)) return;   // TS-only store — excluded from all reports
+      const newI = clientRemap.get(oldI);
       const [id, name, fr, vr, pg, dl, vs, ls, lic, isRev] = row;
-      const agg = perClient.get(i) || { o: 0, u: 0, rev: 0 };
+      const agg = perClient.get(oldI) || { o: 0, u: 0, rev: 0 };
       const lastOrder = ls ? new Date(ls.replace(' ', 'T')) : null;
       const start = vs ? new Date(vs) : null;
-      return {
-        i,
+      clients.push({
+        i: newI,
         n: name,
         sr: normRep(reps[fr] ? reps[fr][1] : ''),
         vr: normRep((vr != null && reps[vr]) ? reps[vr][1] : ''),
@@ -159,13 +184,15 @@
         o: agg.o,
         u: agg.u,
         rev: c2d(agg.rev),
-        sku: skusPerClient.get(i) ? skusPerClient.get(i).size : 0,
+        sku: skusPerClient.get(oldI) ? skusPerClient.get(oldI).size : 0,
         aov: agg.o ? c2d(agg.rev) / agg.o : 0,
         tenureDays: start ? Math.max(0, Math.round((today - start) / 86400000)) : 0,
         daysSinceOrder: lastOrder ? Math.max(0, Math.round((today - lastOrder) / 86400000)) : 9999,
         _isRevenue: !!isRev,
-      };
+      });
     });
+    // totalClients reflects the post-filter store count used by every report.
+    meta.totalClients = clients.length;
 
     // SKU revenue/units/stores aggregates (re-indexed)
     const skuAgg = new Map();
@@ -229,8 +256,10 @@
     let totalRev = 0, totalU = 0;
     for (let i = 0; i < ccs.row.length; i++) {
       if (!keepPerf[ccs.col[i]]) continue;
+      const cNew = clientRemap.get(ccs.row[i]);
+      if (cNew === undefined) continue;   // TS-only client — already excluded
       matrix.push({
-        c: ccs.row[i],
+        c: cNew,
         s: skuRemap.get(ccs.col[i]),
         r: c2d(ccs.revenue_cents[i]),
         u: ccs.units[i],
