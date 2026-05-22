@@ -178,6 +178,8 @@ def infer_top_category(name: str) -> str:
     if 'sungaze' in n: return 'Beverage'
     if 'mega roll' in n: return 'Prerolls'
     if 'macro bar' in n or 'panda battery' in n: return 'Accessories'
+    if 'pocket panda' in n: return 'Accessories'
+    if 'huxton' in n: return 'Prerolls'
     # Generic
     if 'flower' in n: return 'Flower'
     if any(k in n for k in ('preroll','pre-roll','joint','firecracker','sparkler')): return 'Prerolls'
@@ -187,7 +189,7 @@ def infer_top_category(name: str) -> str:
     if any(k in n for k in ('topical','balm','cream')): return 'Topicals'
     if 'tincture' in n: return 'Tinctures'
     if any(k in n for k in ('beverage','drink','soda','seltzer')): return 'Beverage'
-    if any(k in n for k in ('accessor','apparel','merch','sticker')): return 'Accessories'
+    if any(k in n for k in ('accessor','apparel','merch','sticker','shirt','clothing')): return 'Accessories'
     return 'Other'
 
 

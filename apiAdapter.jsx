@@ -47,6 +47,10 @@
     if (n.includes('mega roll')) return 'Prerolls';
     // Macro Bar + Panda Battery = accessories / hardware
     if (n.includes('macro bar') || n.includes('panda battery')) return 'Accessories';
+    // Pocket Panda = pocket vape accessory
+    if (n.includes('pocket panda')) return 'Accessories';
+    // Huxton = preroll brand (tins / multi packs)
+    if (n.includes('huxton')) return 'Prerolls';
 
     // ----- GENERIC KEYWORD MATCHES -----
     if (n.includes('flower')) return 'Flower';
@@ -65,7 +69,7 @@
     if (n.includes('topical') || n.includes('balm') || n.includes('cream')) return 'Topicals';
     if (n.includes('tincture')) return 'Tinctures';
     if (n.includes('beverage') || n.includes('drink') || n.includes('soda') || n.includes('seltzer')) return 'Beverage';
-    if (n.includes('accessor') || n.includes('apparel') || n.includes('merch') || n.includes('sticker')) return 'Accessories';
+    if (n.includes('accessor') || n.includes('apparel') || n.includes('merch') || n.includes('sticker') || n.includes('shirt') || n.includes('clothing')) return 'Accessories';
 
     return 'Other';
   }
