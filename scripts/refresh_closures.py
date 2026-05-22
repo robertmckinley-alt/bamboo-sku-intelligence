@@ -242,6 +242,19 @@ def main() -> int:
     new = diff(prev_api, curr_api, today)
     print(f"  detected {len(new)} new (client × SKU group) placements vs previous snapshot")
 
+    # Bootstrap-dump guard: a normal day yields a few dozen closures. If the
+    # diff is implausibly large the previous snapshot was stale or missing, and
+    # appending every changed pair would dump thousands of false closures
+    # (this happened 2026-05-21: 2,075 bogus rows). Skip the append; just
+    # refresh the snapshot so tomorrow's diff is clean.
+    MAX_DAILY_CLOSURES = 400
+    if len(new) > MAX_DAILY_CLOSURES:
+        print(f"  WARNING: {len(new)} closures is far above a normal day "
+              f"(cap {MAX_DAILY_CLOSURES}) - previous snapshot was likely stale. "
+              f"Skipping append to avoid a bootstrap dump; refreshing snapshot only.")
+        SNAPSHOT_PATH.write_text(json.dumps(curr_api, separators=(',', ':')))
+        return 0
+
     # Append to closures.json (idempotent against re-runs on the same day).
     # closures.json may be either legacy [list-of-dicts] or compact {cols, rows};
     # load_closures handles both. save_closures always writes compact.
