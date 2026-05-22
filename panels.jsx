@@ -399,6 +399,13 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
   const [missingSort, setMissingSort] = useState({key: 'rank', dir: 'asc'});
   const [carrySort, setCarrySort] = useState({key: 'r', dir: 'desc'});
   const [bundleIds, setBundleIds] = useState(new Set());
+  // Revenue rank: each SKU's position when ALL SKUs are sorted by revenue
+  // (#1 = highest-revenue SKU network-wide). Drives the Missing Top SKUs order.
+  const revRankById = useMemo(() => {
+    const m = new Map();
+    [...a.skus].sort((x, y) => (y.rev || 0) - (x.rev || 0)).forEach((s, i) => m.set(s.i, i + 1));
+    return m;
+  }, [a]);
   if (!cl) return null;
 
   const carrying = useMemo(() => {
@@ -436,8 +443,8 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
     const k = missingSort.key;
     const m = missingSort.dir === 'asc' ? 1 : -1;
     arr.sort((x,y) => {
-      const xv = k === 'rank' ? x.sku.rank : k === 'n' ? x.sku.n : k === 'c' ? x.sku.c : k === 'tag' ? x.sku.tag : k === 'rps' ? x.sku.revPerStore : k === 'est' ? x.est : k === 'sug' ? x.suggestedUnits : x.sku[k];
-      const yv = k === 'rank' ? y.sku.rank : k === 'n' ? y.sku.n : k === 'c' ? y.sku.c : k === 'tag' ? y.sku.tag : k === 'rps' ? y.sku.revPerStore : k === 'est' ? y.est : k === 'sug' ? y.suggestedUnits : y.sku[k];
+      const xv = k === 'rank' ? (revRankById.get(x.sku.i) || 9999) : k === 'n' ? x.sku.n : k === 'c' ? x.sku.c : k === 'tag' ? x.sku.tag : k === 'rps' ? x.sku.revPerStore : k === 'est' ? x.est : k === 'sug' ? x.suggestedUnits : x.sku[k];
+      const yv = k === 'rank' ? (revRankById.get(y.sku.i) || 9999) : k === 'n' ? y.sku.n : k === 'c' ? y.sku.c : k === 'tag' ? y.sku.tag : k === 'rps' ? y.sku.revPerStore : k === 'est' ? y.est : k === 'sug' ? y.suggestedUnits : y.sku[k];
       if (typeof xv === 'string') return (xv||'').localeCompare(yv||'') * m;
       return ((xv ?? 0) - (yv ?? 0)) * m;
     });
@@ -553,7 +560,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
       {/* Missing Top SKUs — centerpiece */}
       <div className="border-b border-slate-200">
         <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between sticky" style={{top: 0, zIndex: 6}}>
-          <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">Missing Top SKUs <span className="text-slate-500 normal-case">({sortedMissing.length} ranked, by global score)</span></h3>
+          <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">Missing Top SKUs <span className="text-slate-500 normal-case">({sortedMissing.length} ranked, by revenue)</span></h3>
           <div className="flex items-center gap-2">
             {bundleIds.size > 0 && <span className="text-[11px] text-emerald-700 font-mono">{bundleIds.size} selected</span>}
             <button disabled={bundleIds.size === 0} onClick={() => onExportCallSheet([cl.i], [...bundleIds])} className="btn btn-emerald">→ Add to call sheet</button>
@@ -579,7 +586,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
                   <td className="text-center" onClick={e => e.stopPropagation()}>
                     <input type="checkbox" checked={bundleIds.has(sku.i)} onChange={() => toggleBundle(sku.i)} />
                   </td>
-                  <td className="text-right tabular-nums font-mono text-slate-500">#{sku.rank}</td>
+                  <td className="text-right tabular-nums font-mono text-slate-500">#{revRankById.get(sku.i) || '—'}</td>
                   <td onClick={() => onPickSku(sku.i)} className="cursor-pointer truncate max-w-[260px]"><span className="hover:underline">{sku.n}</span></td>
                   <td className="text-slate-500">{sku.c}</td>
                   <td className="text-right tabular-nums font-mono">{fmt$(sku.revPerStore)}</td>
