@@ -174,6 +174,10 @@ def infer_top_category(name: str) -> str:
     if 'panda pen' in n: return 'Vapes'
     if 'juice box' in n: return 'Vapes'
     if 'cake icing' in n or 'cake batter' in n or 'opal sugar' in n: return 'Concentrates'
+    if 'micro bar' in n: return 'Vapes'
+    if 'sungaze' in n: return 'Beverage'
+    if 'mega roll' in n: return 'Prerolls'
+    if 'macro bar' in n or 'panda battery' in n: return 'Accessories'
     # Generic
     if 'flower' in n: return 'Flower'
     if any(k in n for k in ('preroll','pre-roll','joint','firecracker','sparkler')): return 'Prerolls'

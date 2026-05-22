@@ -39,6 +39,14 @@
     if (n.includes('juice box')) return 'Vapes';
     // Cake Icing / Cake Batter = concentrates (despite the dessert names)
     if (n.includes('cake icing') || n.includes('cake batter') || n.includes('opal sugar')) return 'Concentrates';
+    // Micro Bar = vape hardware line (AIO / 510 / Capsule Collection)
+    if (n.includes('micro bar')) return 'Vapes';
+    // Sungaze = THC/CBD beverage line (runs before the generic 'sugar' concentrate keyword)
+    if (n.includes('sungaze')) return 'Beverage';
+    // Mega Rolls = large infused joints
+    if (n.includes('mega roll')) return 'Prerolls';
+    // Macro Bar + Panda Battery = accessories / hardware
+    if (n.includes('macro bar') || n.includes('panda battery')) return 'Accessories';
 
     // ----- GENERIC KEYWORD MATCHES -----
     if (n.includes('flower')) return 'Flower';
