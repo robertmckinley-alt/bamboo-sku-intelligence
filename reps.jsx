@@ -204,7 +204,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                   const need = goal != null ? Math.max(0, Math.ceil(goal * sel.stores) - row.stores) : null;
                   const needClass = need == null ? 'text-slate-400' : need === 0 ? 'text-emerald-700' : need >= 10 ? 'text-rose-700' : 'text-amber-700';
                   return (
-                    <tr key={row.sku.i} onClick={() => setMissingDrawer({repType, repName: sel.name, category: row.sku.c})} className="cursor-pointer">
+                    <tr key={row.sku.i} onClick={() => setMissingDrawer({repType, repName: sel.name, skuGroupId: row.sku.i})} className="cursor-pointer">
                       <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                       <td className="truncate max-w-[220px]" title={row.sku.n}>{row.sku.n}</td>
                       <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{row.sku.c}</span></td>
@@ -355,11 +355,10 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
 
 function MissingProductsDrawer({a, init, onClose}) {
   const Drawer = window.BambooPanels.Drawer;
-  const [repType, setRepType]   = useState(init.repType || 'sr');
-  const [repName, setRepName]   = useState(init.repName || '');
-  const [storeId, setStoreId]   = useState(init.storeId == null ? null : init.storeId);
-  const [category, setCategory] = useState(init.category || 'All');
-  const [expanded, setExpanded] = useState(null);   // SKU-group id drilled into
+  const [repType, setRepType]       = useState(init.repType || 'sr');
+  const [repName, setRepName]       = useState(init.repName || '');
+  const [skuGroupId, setSkuGroupId] = useState(init.skuGroupId);
+  const [storeId, setStoreId]       = useState(init.storeId == null ? null : init.storeId);
 
   // Reps of the current type -> their store (client) indices.
   const repsMap = useMemo(() => {
@@ -385,14 +384,14 @@ function MissingProductsDrawer({a, init, onClose}) {
   ), [repsMap, repName, a]);
   React.useEffect(() => { setStoreId(null); }, [repName, repType]);
 
-  // High-level categories present across SKU groups.
-  const categories = useMemo(() => {
-    const set = new Set();
-    a.skus.forEach(g => { if (g.c) set.add(g.c); });
-    return ['All', ...[...set].sort()];
-  }, [a]);
+  // SKU group dropdown options, alphabetical.
+  const skuOpts = useMemo(
+    () => [...a.skus].sort((x, y) => (x.n || '').localeCompare(y.n || '')),
+    [a]
+  );
+  const sku = a.skuById.get(skuGroupId);
 
-  // SKU groups the selected store already carries (revenue > 0).
+  // SKU groups the selected store carries (revenue > 0).
   const carrySet = useMemo(() => {
     if (storeId == null) return null;
     const set = new Set();
@@ -401,36 +400,28 @@ function MissingProductsDrawer({a, init, onClose}) {
     }
     return set;
   }, [storeId, a]);
+  const storeCarries = carrySet ? carrySet.has(skuGroupId) : false;
 
-  // The SKU-group list: scoped to the category, and — once a store is
-  // chosen — filtered to the groups that store does NOT carry. Top 50 by revenue.
-  const groups = useMemo(() => {
-    let list = a.skus.filter(g => category === 'All' || g.c === category);
-    if (carrySet) list = list.filter(g => !carrySet.has(g.i));
-    return list.slice().sort((x, y) => (y.rev || 0) - (x.rev || 0)).slice(0, 50);
-  }, [a, category, carrySet]);
-
-  // Reset the drill-in whenever the list changes underneath it.
-  React.useEffect(() => { setExpanded(null); }, [storeId, category, repName, repType]);
-
-  // Individual products for the drilled-in SKU group, by revenue.
-  const expandedProducts = useMemo(() => {
-    if (expanded == null) return [];
-    return a.products.filter(p => p.sg === expanded)
-      .sort((x, y) => y.rev - x.rev).slice(0, 50);
-  }, [a, expanded]);
+  // Top 50 products in the selected SKU group, by revenue.
+  const products = useMemo(() => (
+    a.products.filter(p => p.sg === skuGroupId)
+      .sort((x, y) => y.rev - x.rev).slice(0, 50)
+  ), [a, skuGroupId]);
 
   const store = storeId == null ? null : a.clients[storeId];
-  const totalStores = a.clients.length;
-  const catLabel = category === 'All' ? 'all categories' : category;
+  // The product list is the store's MISSING list only when it is genuinely all
+  // missing: before a store is picked (preview), or when the store carries none
+  // of the group. A store that already carries the group can't be broken down
+  // to individual strains from the API, so there is nothing to list as missing.
+  const showList = store == null || !storeCarries;
 
   return (
-    <Drawer onClose={onClose} width={1020}>
+    <Drawer onClose={onClose} width={960}>
       <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3.5 flex items-start gap-3 z-10">
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-mono text-slate-500 small-caps mb-1">missing-product finder · group-level gap analysis</div>
-          <h2 className="font-display text-[20px] font-semibold tracking-tight leading-tight truncate" title={store ? store.n : ''}>
-            {store ? store.n : 'Pick a store'} <span className="text-slate-400 italic">— SKU groups to pitch</span>
+          <div className="text-[10px] font-mono text-slate-500 small-caps mb-1">missing-product finder</div>
+          <h2 className="font-display text-[20px] font-semibold tracking-tight leading-tight truncate" title={sku ? sku.n : ''}>
+            {sku ? sku.n : 'SKU group'} <span className="text-slate-400 italic">— products to pitch</span>
           </h2>
         </div>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl leading-none -mt-1" aria-label="Close">×</button>
@@ -450,108 +441,81 @@ function MissingProductsDrawer({a, init, onClose}) {
           </select>
         </div>
         <label className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono text-slate-500 small-caps">store</span>
-          <select value={storeId == null ? '' : storeId}
-                  onChange={e => setStoreId(e.target.value === '' ? null : Number(e.target.value))}
-                  className="text-[11px]" style={{maxWidth: 240}}>
-            <option value="">— select a store —</option>
-            {stores.map(c => <option key={c.i} value={c.i}>{c.n}</option>)}
+          <span className="text-[10px] font-mono text-slate-500 small-caps">sku group</span>
+          <select value={skuGroupId} onChange={e => setSkuGroupId(Number(e.target.value))} className="text-[11px]" style={{maxWidth: 240}}>
+            {skuOpts.map(g => <option key={g.i} value={g.i}>{g.n}</option>)}
           </select>
         </label>
         <label className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono text-slate-500 small-caps">category</span>
-          <select value={category} onChange={e => setCategory(e.target.value)} className="text-[11px]" style={{maxWidth: 170}}>
-            {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All categories' : c}</option>)}
+          <span className="text-[10px] font-mono text-slate-500 small-caps">store</span>
+          <select value={storeId == null ? '' : storeId}
+                  onChange={e => setStoreId(e.target.value === '' ? null : Number(e.target.value))}
+                  className="text-[11px]" style={{maxWidth: 260}}>
+            <option value="">— select a store —</option>
+            {stores.map(c => {
+              const has = (a.byClient.get(c.i) || []).some(row => row[0] === skuGroupId && row[1] > 0);
+              return <option key={c.i} value={c.i}>{(has ? '✓ ' : '○ ') + c.n}</option>;
+            })}
           </select>
         </label>
       </div>
 
       <div className="px-5 py-2.5 border-b border-slate-200 text-[12px]"
-           style={{background: store == null ? 'white' : 'rgba(16,185,129,.08)'}}>
+           style={{background: store == null ? 'white' : storeCarries ? 'rgba(217,119,6,.08)' : 'rgba(16,185,129,.08)'}}>
         {store == null ? (
-          <span className="text-slate-500">Pick a store to see which of the top SKU groups it isn't carrying yet.</span>
+          <span className="text-slate-500">Pick a store to see its missing products. In the store list, ○ = doesn't carry this SKU group, ✓ = already does.</span>
+        ) : storeCarries ? (
+          <span className="text-amber-800">
+            <b>{store.n}</b> already carries <b>{sku ? sku.n : ''}</b>. Bamboo's API doesn't track which individual strains a store has bought, so there are no confirmed missing products to list here — pick a store marked ○ for a full pitch list.
+          </span>
         ) : (
           <span className="text-emerald-800">
-            <b>{store.n}</b> is missing <b>{groups.length}</b> of the top SKU group{groups.length === 1 ? '' : 's'} in <b>{catLabel}</b> — ranked by network revenue. Click a row to see its products.
+            <b>{store.n}</b> carries <b>none</b> of <b>{sku ? sku.n : ''}</b> — all {products.length} product{products.length === 1 ? '' : 's'} below are missing and open to pitch.
           </span>
         )}
       </div>
 
-      <div className="overflow-auto" style={{maxHeight: '62vh'}}>
-        <table className="dt">
-          <thead>
-            <tr>
-              <th className="text-right" style={{width: 32}}>#</th>
-              <th>SKU Group</th>
-              <th>Category</th>
-              <th className="text-right">Net Revenue</th>
-              <th className="text-right" title="Stores across the network carrying this SKU group">Carried by</th>
-              <th className="text-right" title="Average revenue per carrying store — a rough projection if this store added it">Est / store</th>
-            </tr>
-          </thead>
-          <tbody>
-            {groups.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">
-                {store == null ? 'No SKU groups in this category.' : `${store.n} already carries every top SKU group in ${catLabel}.`}
-              </td></tr>
-            ) : groups.map((g, i) => {
-              const isOpen = expanded === g.i;
-              return (
-                <React.Fragment key={g.i}>
-                  <tr onClick={() => setExpanded(isOpen ? null : g.i)} className="cursor-pointer">
-                    <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
-                    <td className="max-w-[260px] truncate" title={g.n}>
-                      <span className="text-slate-400 mr-1">{isOpen ? '▾' : '▸'}</span>{g.n}
-                    </td>
-                    <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{g.c}</span></td>
-                    <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(g.rev)}</td>
-                    <td className="text-right tabular-nums font-mono text-slate-500">{(g.stores != null ? g.stores : g.st)}/{totalStores}</td>
-                    <td className="text-right tabular-nums font-mono text-slate-700">{fmt$(g.revPerStore || 0)}</td>
-                  </tr>
-                  {isOpen && (
-                    <tr>
-                      <td colSpan={6} style={{padding: 0, background: '#f8fafc'}}>
-                        <div className="px-5 py-2.5">
-                          <div className="text-[10px] font-mono text-slate-500 small-caps mb-1.5">top products in {g.n} · ranked by network revenue</div>
-                          <table className="w-full text-[11px]">
-                            <thead>
-                              <tr className="text-slate-500 text-left">
-                                <th className="font-semibold py-1 pr-2 text-right" style={{width: 28}}>#</th>
-                                <th className="font-semibold py-1 pr-2">Product</th>
-                                <th className="font-semibold py-1 pr-2">Brand</th>
-                                <th className="font-semibold py-1 pr-2 text-right">Revenue</th>
-                                <th className="font-semibold py-1 text-right">Units</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {expandedProducts.length === 0 ? (
-                                <tr><td colSpan={5} className="text-slate-400 py-3 text-center">No individual products are mapped to this group.</td></tr>
-                              ) : expandedProducts.map((p, j) => (
-                                <tr key={p.i} className="border-t border-slate-200">
-                                  <td className="py-1 pr-2 text-right tabular-nums font-mono text-slate-400">{j + 1}</td>
-                                  <td className="py-1 pr-2 truncate max-w-[320px]" title={p.n}>{p.n}</td>
-                                  <td className="py-1 pr-2 text-slate-600">{p.b || '—'}</td>
-                                  <td className="py-1 pr-2 text-right tabular-nums font-mono text-emerald-700">{fmt$(p.rev)}</td>
-                                  <td className="py-1 text-right tabular-nums font-mono text-slate-600">{fmtN(p.u)}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {showList ? (
+        <div className="overflow-auto" style={{maxHeight: '58vh'}}>
+          <table className="dt">
+            <thead>
+              <tr>
+                <th className="text-right" style={{width: 36}}>#</th>
+                <th>Product</th>
+                <th>Brand</th>
+                <th className="text-right">Revenue</th>
+                <th className="text-right">Units</th>
+                <th className="text-right" title="Network revenue per month">Rev / mo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.length === 0 ? (
+                <tr><td colSpan={6} className="text-center text-slate-400 py-6">No products are mapped to this SKU group.</td></tr>
+              ) : products.map((p, i) => (
+                <tr key={p.i}>
+                  <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                  <td className="truncate max-w-[320px]" title={p.n}>{p.n}</td>
+                  <td className="text-slate-600">{p.b || '—'}</td>
+                  <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(p.rev)}</td>
+                  <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
+                  <td className="text-right tabular-nums font-mono text-slate-500">{fmt$(p.vel)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="px-6 py-10 text-center text-[12px] text-slate-500" style={{minHeight: 200}}>
+          <div className="text-[26px] mb-2 text-amber-600">✓</div>
+          <div><b className="text-slate-700">{store.n}</b> already carries <b className="text-slate-700">{sku ? sku.n : ''}</b>.</div>
+          <div className="mt-1.5">Pick a store marked ○ in the store dropdown — those don't carry this SKU group, so every product in it is an open pitch.</div>
+        </div>
+      )}
 
       <div className="px-5 py-2 text-[10px] font-mono text-slate-500 bg-slate-50 border-t border-slate-200">
-        {store == null
-          ? `Top ${groups.length} SKU group${groups.length === 1 ? '' : 's'} in ${catLabel} by revenue · pick a store to filter to gaps`
-          : `${groups.length} missing SKU group${groups.length === 1 ? '' : 's'} · ${catLabel} · ranked by network revenue`}
+        {showList
+          ? `Top ${products.length} product${products.length === 1 ? '' : 's'} in ${sku ? sku.n : 'this group'} by revenue${store == null ? '' : ' · all missing for ' + store.n}`
+          : `${store.n} already carries ${sku ? sku.n : 'this group'}`}
       </div>
     </Drawer>
   );
