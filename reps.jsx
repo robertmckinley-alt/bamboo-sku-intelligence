@@ -204,7 +204,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                   const need = goal != null ? Math.max(0, Math.ceil(goal * sel.stores) - row.stores) : null;
                   const needClass = need == null ? 'text-slate-400' : need === 0 ? 'text-emerald-700' : need >= 10 ? 'text-rose-700' : 'text-amber-700';
                   return (
-                    <tr key={row.sku.i} onClick={() => setMissingDrawer({repType, repName: sel.name, skuGroupId: row.sku.i})} className="cursor-pointer">
+                    <tr key={row.sku.i} onClick={() => setMissingDrawer({repType, repName: sel.name, category: row.sku.c})} className="cursor-pointer">
                       <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                       <td className="truncate max-w-[220px]" title={row.sku.n}>{row.sku.n}</td>
                       <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{row.sku.c}</span></td>
@@ -355,10 +355,11 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
 
 function MissingProductsDrawer({a, init, onClose}) {
   const Drawer = window.BambooPanels.Drawer;
-  const [repType, setRepType]       = useState(init.repType || 'sr');
-  const [repName, setRepName]       = useState(init.repName || '');
-  const [skuGroupId, setSkuGroupId] = useState(init.skuGroupId);
-  const [storeId, setStoreId]       = useState(init.storeId == null ? null : init.storeId);
+  const [repType, setRepType]   = useState(init.repType || 'sr');
+  const [repName, setRepName]   = useState(init.repName || '');
+  const [storeId, setStoreId]   = useState(init.storeId == null ? null : init.storeId);
+  const [category, setCategory] = useState(init.category || 'All');
+  const [expanded, setExpanded] = useState(null);   // SKU-group id drilled into
 
   // Reps of the current type -> their store (client) indices.
   const repsMap = useMemo(() => {
@@ -382,18 +383,16 @@ function MissingProductsDrawer({a, init, onClose}) {
     (repsMap.get(repName) || []).map(i => a.clients[i])
       .sort((x, y) => (x.n || '').localeCompare(y.n || ''))
   ), [repsMap, repName, a]);
-
-  // Reset the store whenever the rep changes (its store list changed).
   React.useEffect(() => { setStoreId(null); }, [repName, repType]);
 
-  // SKU group dropdown options, alphabetical.
-  const skuOpts = useMemo(
-    () => [...a.skus].sort((x, y) => (x.n || '').localeCompare(y.n || '')),
-    [a]
-  );
-  const sku = a.skuById.get(skuGroupId);
+  // High-level categories present across SKU groups.
+  const categories = useMemo(() => {
+    const set = new Set();
+    a.skus.forEach(g => { if (g.c) set.add(g.c); });
+    return ['All', ...[...set].sort()];
+  }, [a]);
 
-  // SKU groups the selected store carries (revenue > 0).
+  // SKU groups the selected store already carries (revenue > 0).
   const carrySet = useMemo(() => {
     if (storeId == null) return null;
     const set = new Set();
@@ -402,24 +401,36 @@ function MissingProductsDrawer({a, init, onClose}) {
     }
     return set;
   }, [storeId, a]);
-  const storeCarries = carrySet ? carrySet.has(skuGroupId) : false;
 
-  // Top 50 products in the SKU group, ranked by revenue.
-  const products = useMemo(() => (
-    a.products.filter(p => p.sg === skuGroupId)
-      .sort((x, y) => y.rev - x.rev)
-      .slice(0, 50)
-  ), [a, skuGroupId]);
+  // The SKU-group list: scoped to the category, and — once a store is
+  // chosen — filtered to the groups that store does NOT carry. Top 50 by revenue.
+  const groups = useMemo(() => {
+    let list = a.skus.filter(g => category === 'All' || g.c === category);
+    if (carrySet) list = list.filter(g => !carrySet.has(g.i));
+    return list.slice().sort((x, y) => (y.rev || 0) - (x.rev || 0)).slice(0, 50);
+  }, [a, category, carrySet]);
+
+  // Reset the drill-in whenever the list changes underneath it.
+  React.useEffect(() => { setExpanded(null); }, [storeId, category, repName, repType]);
+
+  // Individual products for the drilled-in SKU group, by revenue.
+  const expandedProducts = useMemo(() => {
+    if (expanded == null) return [];
+    return a.products.filter(p => p.sg === expanded)
+      .sort((x, y) => y.rev - x.rev).slice(0, 50);
+  }, [a, expanded]);
 
   const store = storeId == null ? null : a.clients[storeId];
+  const totalStores = a.clients.length;
+  const catLabel = category === 'All' ? 'all categories' : category;
 
   return (
-    <Drawer onClose={onClose} width={960}>
+    <Drawer onClose={onClose} width={1020}>
       <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3.5 flex items-start gap-3 z-10">
         <div className="flex-1 min-w-0">
           <div className="text-[10px] font-mono text-slate-500 small-caps mb-1">missing-product finder · group-level gap analysis</div>
-          <h2 className="font-display text-[20px] font-semibold tracking-tight leading-tight truncate" title={sku ? sku.n : ''}>
-            {sku ? sku.n : 'SKU group'} <span className="text-slate-400 italic">— top products to pitch</span>
+          <h2 className="font-display text-[20px] font-semibold tracking-tight leading-tight truncate" title={store ? store.n : ''}>
+            {store ? store.n : 'Pick a store'} <span className="text-slate-400 italic">— SKU groups to pitch</span>
           </h2>
         </div>
         <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl leading-none -mt-1" aria-label="Close">×</button>
@@ -434,79 +445,6 @@ function MissingProductsDrawer({a, init, onClose}) {
                       className={`px-2 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
             ))}
           </div>
-          <select value={repName} onChange={e => setRepName(e.target.value)} className="text-[11px]" style={{maxWidth: 190}}>
-            {repNames.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
-        <label className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono text-slate-500 small-caps">sku group</span>
-          <select value={skuGroupId} onChange={e => setSkuGroupId(Number(e.target.value))} className="text-[11px]" style={{maxWidth: 240}}>
-            {skuOpts.map(g => <option key={g.i} value={g.i}>{g.n}</option>)}
-          </select>
-        </label>
-        <label className="flex items-center gap-1.5">
-          <span className="text-[10px] font-mono text-slate-500 small-caps">store</span>
-          <select value={storeId == null ? '' : storeId}
-                  onChange={e => setStoreId(e.target.value === '' ? null : Number(e.target.value))}
-                  className="text-[11px]" style={{maxWidth: 260}}>
-            <option value="">— select a store —</option>
-            {stores.map(c => {
-              const has = (a.byClient.get(c.i) || []).some(row => row[0] === skuGroupId && row[1] > 0);
-              return <option key={c.i} value={c.i}>{(has ? '✓ ' : '○ ') + c.n}</option>;
-            })}
-          </select>
-        </label>
-      </div>
-
-      <div className="px-5 py-2.5 border-b border-slate-200 text-[12px]"
-           style={{background: store == null ? 'white' : storeCarries ? 'rgba(217,119,6,.08)' : 'rgba(16,185,129,.08)'}}>
-        {store == null ? (
-          <span className="text-slate-500">Pick a store above to see how this SKU group fits its book.</span>
-        ) : storeCarries ? (
-          <span className="text-amber-800">
-            <b>{store.n}</b> already carries <b>{sku ? sku.n : ''}</b>. The API has no product-level store history, so the list below is the group's full catalog for reference — not confirmed gaps.
-          </span>
-        ) : (
-          <span className="text-emerald-800">
-            <b>{store.n}</b> carries <b>none</b> of <b>{sku ? sku.n : ''}</b> — every product below is open to pitch.
-          </span>
-        )}
-      </div>
-
-      <div className="overflow-auto" style={{maxHeight: '58vh'}}>
-        <table className="dt">
-          <thead>
-            <tr>
-              <th className="text-right" style={{width: 36}}>#</th>
-              <th>Product</th>
-              <th>Brand</th>
-              <th className="text-right">Revenue</th>
-              <th className="text-right">Units</th>
-              <th className="text-right" title="Network revenue per month">Rev / mo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-slate-400 py-6">No products are mapped to this SKU group.</td></tr>
-            ) : products.map((p, i) => (
-              <tr key={p.i}>
-                <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
-                <td className="truncate max-w-[320px]" title={p.n}>{p.n}</td>
-                <td className="text-slate-600">{p.b || '—'}</td>
-                <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(p.rev)}</td>
-                <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
-                <td className="text-right tabular-nums font-mono text-slate-500">{fmt$(p.vel)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="px-5 py-2 text-[10px] font-mono text-slate-500 bg-slate-50 border-t border-slate-200">
-        Top {products.length} product{products.length === 1 ? '' : 's'} in {sku ? sku.n : 'this group'} by revenue · ranked network-wide
-      </div>
-    </Drawer>
-  );
-}
-
+          <select value={repName} onChange={e => setRepName(e.target.value)} className="text-[11px]" style={{maxWidth: 180}}>
+            {repNames.map(r => <option key={r} value={r
 window.BambooReps = { RepsPanel };
