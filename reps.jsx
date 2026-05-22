@@ -446,5 +446,115 @@ function MissingProductsDrawer({a, init, onClose}) {
             ))}
           </div>
           <select value={repName} onChange={e => setRepName(e.target.value)} className="text-[11px]" style={{maxWidth: 180}}>
-            {repNames.map(r => <option key={r} value={r
+            {repNames.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
+        <label className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono text-slate-500 small-caps">store</span>
+          <select value={storeId == null ? '' : storeId}
+                  onChange={e => setStoreId(e.target.value === '' ? null : Number(e.target.value))}
+                  className="text-[11px]" style={{maxWidth: 240}}>
+            <option value="">— select a store —</option>
+            {stores.map(c => <option key={c.i} value={c.i}>{c.n}</option>)}
+          </select>
+        </label>
+        <label className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono text-slate-500 small-caps">category</span>
+          <select value={category} onChange={e => setCategory(e.target.value)} className="text-[11px]" style={{maxWidth: 170}}>
+            {categories.map(c => <option key={c} value={c}>{c === 'All' ? 'All categories' : c}</option>)}
+          </select>
+        </label>
+      </div>
+
+      <div className="px-5 py-2.5 border-b border-slate-200 text-[12px]"
+           style={{background: store == null ? 'white' : 'rgba(16,185,129,.08)'}}>
+        {store == null ? (
+          <span className="text-slate-500">Pick a store to see which of the top SKU groups it isn't carrying yet.</span>
+        ) : (
+          <span className="text-emerald-800">
+            <b>{store.n}</b> is missing <b>{groups.length}</b> of the top SKU group{groups.length === 1 ? '' : 's'} in <b>{catLabel}</b> — ranked by network revenue. Click a row to see its products.
+          </span>
+        )}
+      </div>
+
+      <div className="overflow-auto" style={{maxHeight: '62vh'}}>
+        <table className="dt">
+          <thead>
+            <tr>
+              <th className="text-right" style={{width: 32}}>#</th>
+              <th>SKU Group</th>
+              <th>Category</th>
+              <th className="text-right">Net Revenue</th>
+              <th className="text-right" title="Stores across the network carrying this SKU group">Carried by</th>
+              <th className="text-right" title="Average revenue per carrying store — a rough projection if this store added it">Est / store</th>
+            </tr>
+          </thead>
+          <tbody>
+            {groups.length === 0 ? (
+              <tr><td colSpan={6} className="text-center text-slate-400 py-6">
+                {store == null ? 'No SKU groups in this category.' : `${store.n} already carries every top SKU group in ${catLabel}.`}
+              </td></tr>
+            ) : groups.map((g, i) => {
+              const isOpen = expanded === g.i;
+              return (
+                <React.Fragment key={g.i}>
+                  <tr onClick={() => setExpanded(isOpen ? null : g.i)} className="cursor-pointer">
+                    <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                    <td className="max-w-[260px] truncate" title={g.n}>
+                      <span className="text-slate-400 mr-1">{isOpen ? '▾' : '▸'}</span>{g.n}
+                    </td>
+                    <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{g.c}</span></td>
+                    <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(g.rev)}</td>
+                    <td className="text-right tabular-nums font-mono text-slate-500">{(g.stores != null ? g.stores : g.st)}/{totalStores}</td>
+                    <td className="text-right tabular-nums font-mono text-slate-700">{fmt$(g.revPerStore || 0)}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr>
+                      <td colSpan={6} style={{padding: 0, background: '#f8fafc'}}>
+                        <div className="px-5 py-2.5">
+                          <div className="text-[10px] font-mono text-slate-500 small-caps mb-1.5">top products in {g.n} · ranked by network revenue</div>
+                          <table className="w-full text-[11px]">
+                            <thead>
+                              <tr className="text-slate-500 text-left">
+                                <th className="font-semibold py-1 pr-2 text-right" style={{width: 28}}>#</th>
+                                <th className="font-semibold py-1 pr-2">Product</th>
+                                <th className="font-semibold py-1 pr-2">Brand</th>
+                                <th className="font-semibold py-1 pr-2 text-right">Revenue</th>
+                                <th className="font-semibold py-1 text-right">Units</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {expandedProducts.length === 0 ? (
+                                <tr><td colSpan={5} className="text-slate-400 py-3 text-center">No individual products are mapped to this group.</td></tr>
+                              ) : expandedProducts.map((p, j) => (
+                                <tr key={p.i} className="border-t border-slate-200">
+                                  <td className="py-1 pr-2 text-right tabular-nums font-mono text-slate-400">{j + 1}</td>
+                                  <td className="py-1 pr-2 truncate max-w-[320px]" title={p.n}>{p.n}</td>
+                                  <td className="py-1 pr-2 text-slate-600">{p.b || '—'}</td>
+                                  <td className="py-1 pr-2 text-right tabular-nums font-mono text-emerald-700">{fmt$(p.rev)}</td>
+                                  <td className="py-1 text-right tabular-nums font-mono text-slate-600">{fmtN(p.u)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="px-5 py-2 text-[10px] font-mono text-slate-500 bg-slate-50 border-t border-slate-200">
+        {store == null
+          ? `Top ${groups.length} SKU group${groups.length === 1 ? '' : 's'} in ${catLabel} by revenue · pick a store to filter to gaps`
+          : `${groups.length} missing SKU group${groups.length === 1 ? '' : 's'} · ${catLabel} · ranked by network revenue`}
+      </div>
+    </Drawer>
+  );
+}
+
 window.BambooReps = { RepsPanel };
