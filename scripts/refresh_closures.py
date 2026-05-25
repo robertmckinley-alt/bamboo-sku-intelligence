@@ -94,6 +94,12 @@ def is_blocked(name: str) -> bool:
 def should_drop(name: str) -> bool:
     return is_trade_sample(name) or is_blocked(name)
 
+# Test/demo store accounts (e.g. "Scotland TEST") must never generate
+# closures. Matches a word-bounded "test" token, case-insensitive.
+_TEST_CLIENT_RE = re.compile(r'\btest\b', re.I)
+def is_test_client(name: str) -> bool:
+    return bool(_TEST_CLIENT_RE.search(name or ''))
+
 
 def fetch_api() -> dict:
     print(f"Fetching {API_URL} ...")
@@ -119,13 +125,19 @@ def name_keyed_sales(api: dict) -> dict[tuple[str, str], dict]:
         if not keep_perf[col]:
             continue
         client_name = clients[ccs['row'][i]][1]
+        # Test/demo accounts never count as closures.
+        if is_test_client(client_name):
+            continue
         sku_name    = perf[col][1]
         rev         = ccs['revenue_cents'][i]
         u           = ccs['units'][i]
-        key = (client_name, sku_name)
+        # Key on the NORMALIZED client name so a store that gains or loses a
+        # " - VMI" / " - 1WT" / " - NBA" suffix (a record rename, not a new
+        # account) does not surface its entire book as brand-new closures.
+        key = (norm_client(client_name), sku_name)
         agg = out.get(key)
         if agg is None:
-            out[key] = {'rev_cents': rev, 'units': u}
+            out[key] = {'rev_cents': rev, 'units': u, 'display': client_name}
         else:
             agg['rev_cents'] += rev
             agg['units']     += u
@@ -180,12 +192,13 @@ def infer_top_category(name: str) -> str:
     if 'macro bar' in n or 'panda battery' in n: return 'Accessories'
     if 'pocket panda' in n: return 'Accessories'
     if 'huxton' in n: return 'Prerolls'
+    if 'banger' in n: return 'Prerolls'
     # Generic
     if 'flower' in n: return 'Flower'
     if any(k in n for k in ('preroll','pre-roll','joint','firecracker','sparkler')): return 'Prerolls'
     if any(k in n for k in ('vape','cart','disposable','pod','aio')): return 'Vapes'
     if any(k in n for k in ('gummiez','gummies','gummy','edible','chocolate','candies','candy','caramel','drop')): return 'Edibles'
-    if any(k in n for k in ('concentrate','dab','rosin','wax','shatter','badder','budder','crumble','sauce','sugar','diamond','icing','gems n','hash','banger')): return 'Concentrates'
+    if any(k in n for k in ('concentrate','dab','rosin','wax','shatter','badder','budder','crumble','sauce','sugar','diamond','icing','gems n','hash')): return 'Concentrates'
     if any(k in n for k in ('topical','balm','cream')): return 'Topicals'
     if 'tincture' in n: return 'Tinctures'
     if any(k in n for k in ('beverage','drink','soda','seltzer')): return 'Beverage'
@@ -200,18 +213,19 @@ def diff(prev_api: dict | None, curr_api: dict, today: str) -> list[dict]:
     perf       = perf_category_lookup(curr_api)
 
     closures = []
-    for (client_name, sku_name), cell in curr_sales.items():
+    for (norm_name, sku_name), cell in curr_sales.items():
         if cell['rev_cents'] <= 0:
             continue
-        prev_cell = prev_sales.get((client_name, sku_name))
+        prev_cell = prev_sales.get((norm_name, sku_name))
         was_zero  = (prev_cell is None) or (prev_cell['rev_cents'] <= 0)
         if not was_zero:
             continue
-        cli = clients.get(client_name, {})
+        display_name = cell.get('display', norm_name)
+        cli = clients.get(display_name, {})
         pc  = perf.get(sku_name, {'cat': 'Other'})
         closures.append({
             'ts':         today,
-            'clientName': client_name,
+            'clientName': display_name,
             'skuName':    sku_name,
             'category':   pc['cat'],
             'rev':        round(cell['rev_cents'] / 100, 2),

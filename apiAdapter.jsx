@@ -51,6 +51,8 @@
     if (n.includes('pocket panda')) return 'Accessories';
     // Huxton = preroll brand (tins / multi packs)
     if (n.includes('huxton')) return 'Prerolls';
+    // Bangers = infused preroll line (incl. Bubble Hash Bangers)
+    if (n.includes('banger')) return 'Prerolls';
 
     // ----- GENERIC KEYWORD MATCHES -----
     if (n.includes('flower')) return 'Flower';
@@ -65,7 +67,7 @@
         n.includes('wax') || n.includes('shatter') || n.includes('badder') ||
         n.includes('budder') || n.includes('crumble') || n.includes('sauce') ||
         n.includes('sugar') || n.includes('diamond') || n.includes('icing') ||
-        n.includes('gems n') || n.includes('hash') || n.includes('banger')) return 'Concentrates';
+        n.includes('gems n') || n.includes('hash')) return 'Concentrates';
     if (n.includes('topical') || n.includes('balm') || n.includes('cream')) return 'Topicals';
     if (n.includes('tincture')) return 'Tinctures';
     if (n.includes('beverage') || n.includes('drink') || n.includes('soda') || n.includes('seltzer')) return 'Beverage';
