@@ -63,6 +63,16 @@ function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+// Generic CSV download — used by the SKU Engine table and the Reps store list.
+// headers is a string[]; rows is an array of arrays. A UTF-8 BOM + CRLF line
+// endings keep Excel happy.
+function downloadCSV(filename, headers, rows) {
+  const lines = [headers.map(csvEscape).join(',')];
+  for (const row of rows) lines.push(row.map(csvEscape).join(','));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], {type: 'text/csv;charset=utf-8'});
+  downloadBlob(blob, filename);
+}
+
 function exportCallSheetPrintable(a, clientIds) {
   const data = buildCallSheetData(a, clientIds);
   const w = window.open('', '_blank');
@@ -195,4 +205,4 @@ function escHtml(s) {
   return String(s||'').replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
 }
 
-window.BambooExport = { exportCallSheetCSV, exportCallSheetPrintable };
+window.BambooExport = { exportCallSheetCSV, exportCallSheetPrintable, downloadCSV };

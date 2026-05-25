@@ -33,6 +33,25 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
   const VIEWS = ['Revenue','Velocity','Distribution','Opportunity'];
   const highlight = view === 'Revenue' ? 'rev' : view === 'Velocity' ? 'velocity' : view === 'Distribution' ? 'distPct' : 'oppEst';
 
+  // Export the currently filtered + sorted SKU rows as CSV.
+  const downloadCsv = () => {
+    const headers = ['Rank','SKU','Category','Revenue','Units','Stores','Total Stores',
+      'Penetration %','Goal %','Stores To Goal','Units/Store','$/Store','Velocity','Reorder','Dist Gap','Opportunity $'];
+    const rows = sorted.map((s, i) => [
+      i + 1, s.n, s.c,
+      Math.round(s.rev || 0), s.u || 0,
+      s.stores || 0, a.clients.length,
+      s.distPct != null ? (s.distPct * 100).toFixed(1) : '',
+      s.distGoal != null ? (s.distGoal * 100).toFixed(1) : '',
+      s.distGapToGoal != null ? s.distGapToGoal : '',
+      Math.round(s.unitsPerStore || 0), Math.round(s.revPerStore || 0),
+      s.velocity != null ? Number(s.velocity).toFixed(1) : '',
+      s.reorderProxy != null ? Number(s.reorderProxy).toFixed(2) : '',
+      s.distGap || 0, Math.round(s.oppEst || 0),
+    ]);
+    window.BambooExport.downloadCSV(`bamboo-sku-engine-${a.meta.endDate}.csv`, headers, rows);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-3 py-2 border-b border-slate-200 bg-white space-y-2">
@@ -49,6 +68,8 @@ function MasterSkuTable({a, onPick, search, setSearch, catFilter, setCatFilter, 
             ))}
           </div>
           <span className="text-[11px] text-slate-500 font-mono tabular-nums ml-auto">{sorted.length} SKUs</span>
+          <button onClick={downloadCsv} className="btn btn-ghost text-[10px]"
+                  title="Download the current SKU list (filters & sort applied) as CSV">↓ CSV</button>
         </div>
       </div>
       <div className="overflow-auto flex-1">

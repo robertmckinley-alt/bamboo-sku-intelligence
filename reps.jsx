@@ -271,6 +271,22 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
           return 'bg-slate-50 text-slate-600 border border-slate-200';
         };
 
+        // Export the currently filtered + sorted store list as CSV.
+        const downloadStoresCsv = () => {
+          const headers = ['Rank','Store','Sales Rep','VMI Rep','Tag','Opp Score','Revenue',
+            'Missed $','Days Since Order','Last Order','SKU Groups Carried','SKU Groups Total'];
+          const rows = top.map((c, i) => [
+            i + 1, c.n, c.sr || '', c.vr || '', c.storeTag || '',
+            (c.oppScore || 0).toFixed(0),
+            Math.round(c.rev || 0), Math.round(c.missedRev || 0),
+            c.daysSinceOrder == null ? '' : c.daysSinceOrder,
+            c.ls || '', c.skusCarried || 0, c.skusAll || 0,
+          ]);
+          const slug = (sel.name || 'rep').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+          const scope = storeTagFilter ? '-' + storeTagFilter.replace(/[^a-z0-9]+/gi, '-').toLowerCase() : '';
+          window.BambooExport.downloadCSV(`bamboo-${slug}-stores${scope}-${a.meta.endDate}.csv`, headers, rows);
+        };
+
         return (
           <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-baseline justify-between gap-3 flex-wrap">
@@ -304,6 +320,8 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
                     clear
                   </button>
                 )}
+                <button onClick={downloadStoresCsv} className="btn btn-ghost text-[10px]"
+                        title="Download this store list (active filter & sort) as CSV">↓ CSV</button>
               </div>
             </div>
             <div className="max-h-[480px] overflow-auto">
