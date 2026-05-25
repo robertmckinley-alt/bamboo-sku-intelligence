@@ -5,14 +5,15 @@ const { Tag } = window.BambooUI;
 const SECTIONS = [
   {id: 'what', label: 'What this is'},
   {id: 'whats-new', label: "What's new"},
-  {id: 'views', label: 'The 6 main views'},
-  {id: 'velocity', label: 'Finding velocity leaders'},
-  {id: 'weights', label: 'Scoring weights explained'},
-  {id: 'tags', label: 'Tag legend'},
+  {id: 'views', label: 'The 8 main views'},
+  {id: 'goals', label: 'Penetration goals'},
+  {id: 'closures', label: 'Void closures'},
+  {id: 'exports', label: 'Exporting data'},
+  {id: 'tags', label: 'Store tag legend'},
   {id: 'shortcuts', label: 'Keyboard shortcuts'},
   {id: 'callsheet', label: 'Generating a call sheet'},
-  {id: 'sku-detail', label: 'Reading the SKU detail panel'},
-  {id: 'matrix', label: 'Reading the Distribution Matrix'},
+  {id: 'sku-detail', label: 'The SKU detail panel'},
+  {id: 'matrix', label: 'The Distribution Matrix'},
   {id: 'data', label: 'Data freshness & period'},
   {id: 'faq', label: 'FAQ'},
 ];
@@ -55,8 +56,8 @@ function HowTo({a}) {
         </ul>
         <div className="mt-6 pt-4 border-t border-stone-200 px-2">
           <div className="text-[10px] text-stone-500 font-mono leading-relaxed">
-            v2.0 · {a.meta.startDate}<br/>
-            <span className="text-stone-400">{a.meta.totalClients} retailers · {a.skus.length} SKUs</span>
+            v2.2 · {a.meta.startDate}<br/>
+            <span className="text-stone-400">{a.meta.totalClients} retailers · {a.skus.length} SKU groups</span>
           </div>
         </div>
       </nav>
@@ -68,135 +69,127 @@ function HowTo({a}) {
             <h1 className="text-3xl font-semibold text-stone-900 mt-1 tracking-tight">How to use Bamboo SKU Intelligence</h1>
             <p className="text-stone-600 mt-3 text-sm leading-relaxed max-w-2xl">
               A short manual for the team. Read once, then keep it open in a tab.
-              If something feels broken or wrong, tell ops — totals reconcile to the cent against the source pivot, so any mismatch is a bug, not a rounding artifact.
+              If something looks wrong, tell ops — the app reads the live Bamboo Intelligence API, so a mismatch is a bug, not a rounding artifact.
             </p>
           </header>
 
           <Section refs={refs} id="what" title="What this is">
             <p>
               Bamboo SKU Intelligence is a SKU-first wholesale operating system, not a report.
-              It exists so a sales rep can answer the four questions that matter — <em>what should I push, who should I call, what's missing on their shelf, and how much is it worth</em> — without leaving the table.
+              It exists so a sales rep can answer the questions that matter — <em>what should I push, who should I call, what's missing on their shelf, what did we just win, and how much is it worth</em> — without leaving the table.
             </p>
             <p>
-              Tables come first. Charts come second. Every number on screen is traceable to a row in the underlying SKU × retailer matrix. There are no rolled-up insights without a cell you can click into.
+              Tables come first. Charts come second. Every number on screen is traceable to a row in the underlying SKU&nbsp;×&nbsp;retailer matrix. There are no rolled-up insights without a cell you can click into.
             </p>
             <p>
-              The whole app is one HTML file. State persists in the URL, so a link captures your filters and weights — drop it in Slack and your colleague lands exactly where you were.
+              The whole app is one page that pulls live from the Bamboo Intelligence API. State persists in the URL, so a link captures your tab and filters — drop it in Slack and a colleague lands exactly where you were.
             </p>
           </Section>
 
           <Section refs={refs} id="whats-new" title="What's new in this build">
+            <p>This build adds several things since the last manual update:</p>
+            <ul className="list-disc pl-5 space-y-1.5 my-3">
+              <li><strong>Closures tab</strong> — tracks <em>void closures</em>: every time a store starts carrying a SKU group it didn't carry before. It's the running scoreboard of new placements, attributed to both the sales rep and the VMI rep. See the dedicated section below.</li>
+              <li><strong>Penetration goals</strong> — the SKU Engine and the Reps page now carry a <em>Goal</em> column (the target share of stores that should stock a SKU group) and a <em>To Goal</em> column (how many more stores it takes to get there).</li>
+              <li><strong>Missing-product finder</strong> — on the Reps tab, click any SKU group in a rep's list to open a drawer that lists the products a chosen store isn't carrying yet, with rep / SKU-group / store dropdowns to pivot around.</li>
+              <li><strong>Top SKUs tab</strong> — individual products ranked by category, with rep filters and a "missing only" toggle for fast pitch lists.</li>
+              <li><strong>CSV exports everywhere</strong> — one-click <code>↓ CSV</code> buttons on the SKU Engine, the Reps store list, and the Closures log, plus the existing call-sheet CSV. Every export honors whatever filters and sort you have applied.</li>
+              <li><strong>Trade-sample-only stores are hidden</strong> — a store that has only ever taken trade samples no longer clutters the reports; it reappears the moment it places a real revenue order.</li>
+              <li><strong>Category cleanup</strong> — SKU groups are sorted into the right high-level category: Micro Bar → Vapes, Sungaze → Beverage, Mega Rolls / Huxton / all Bangers → Prerolls, Macro Bar &amp; Panda Battery → Accessories, and more.</li>
+            </ul>
+          </Section>
+
+          <Section refs={refs} id="views" title="The 8 main views">
+            <p>The app has eight working surfaces plus this manual. Switch between them with the tab bar, or hit <Kbd>1</Kbd>–<Kbd>8</Kbd>.</p>
+
+            <Subsection name="1 · SKU Engine">
+              <p>The master table. Every active SKU group, every metric, sortable by every column, filterable by category and by search. The <code>Revenue · Velocity · Distribution · Opportunity</code> toggle highlights whichever column you're hunting on. The <code>↓ CSV</code> button exports exactly what's on screen. Click any row to open the SKU detail panel.</p>
+              <Example use="I want to find SKUs to push" do="Open SKU Engine, switch the toggle to Opportunity, sort the Opp $ column descending. Those rows perform well where they're carried but have real distribution gaps. Open one and copy the not-carrying list into your call queue." />
+            </Subsection>
+
+            <Subsection name="2 · Retailers">
+              <p>The store side of the same coin. Every retailer with revenue, order count, SKU coverage, an Opportunity Score and one of five store tags. Filter by sales rep or VMI rep. Click a row to open the retailer detail panel with their missing top SKUs and a suggested order bundle.</p>
+              <Example use="I want a list of stores to call this week" do="Open Retailers, filter Tag = CALL NOW, sort by Opportunity Score. The top of that list is your shortlist — click each, scan the missing SKUs, then export a combined call sheet." />
+            </Subsection>
+
+            <Subsection name="3 · Distribution Matrix">
+              <p>SKU groups as rows, retailers as columns. A heatmap cell means that store carries that SKU group — warmer colors are higher revenue. Empty cells are placement opportunities. See the dedicated section below.</p>
+            </Subsection>
+
+            <Subsection name="4 · Categories">
+              <p>SKU groups organized under their high-level category (Flower, Vapes, Prerolls, Edibles, Concentrates, Beverage, Accessories…), with per-category penetration and leaderboards.</p>
+            </Subsection>
+
+            <Subsection name="5 · Top SKUs">
+              <p>Individual products — not roll-up groups — ranked within each high-level category, top 50 per category. Filter by sales or VMI rep, search by product or brand, and flip on "missing only" to see just the products a rep's stores aren't carrying. Click a row to open its non-carriers list.</p>
+              <Example use="I want a brand's fastest movers in Vapes" do="Open Top SKUs, pick the Vapes category, sort by Vel/mo, and search the brand name. You get real product names, not roll-ups." />
+            </Subsection>
+
+            <Subsection name="6 · Reps">
+              <p>Per-rep view, switchable between Sales Rep and VMI Rep. Cards across the top show each rep's revenue, store count, missed-rev opportunity and store-tag mix. Click a card and two panels open below: <em>all their SKU groups</em> (with rep-scoped penetration vs. the goal) and their <em>high-priority store list</em> (sortable, filterable by tag, with a <code>↓ CSV</code> button). Click any SKU group to open the missing-product finder. Each card also has a 📄 button that prints a combined call sheet for the rep's whole book.</p>
+              <Example use="I want to know which stores under Ashlea still need Bangers" do="Open Reps, click her card, click the Bangers row. The finder drawer opens — pick a store marked ○ (doesn't carry it) and you get the full pitch list of products in that group." />
+            </Subsection>
+
+            <Subsection name="7 · Closures">
+              <p>The new-placement scoreboard. Every (store × SKU group) pair that went from zero to a real order shows up here, dated, with both rep attributions. Filter by date range and rep, search, and export. See the dedicated section below.</p>
+            </Subsection>
+
+            <Subsection name="8 · Buckets">
+              <p>Curated shortlists so you don't have to filter for them: <strong>Top revenue drivers</strong>, <strong>Highest velocity</strong>, <strong>Most distributed</strong>, <strong>Hidden winners</strong> (fast movers that only sit on a fraction of doors — the highest-leverage things to pitch next) and <strong>Weak SKUs</strong>. Each row links into the detail panel.</p>
+            </Subsection>
+          </Section>
+
+          <Section refs={refs} id="goals" title="Penetration goals">
             <p>
-              This release adds <strong>individual product SKU intelligence</strong>. Up to now the system tracked 111 SKU <em>groups</em> (e.g.&nbsp;"1g Platinum Prerolls", "Core Flower"). Each group rolls up dozens of real product SKUs underneath it (e.g.&nbsp;"Trophy Wife - Platinum 1g Preroll", "Golden Pineapple 1g Preroll"). The app now ingests all <strong>2,121 individual products</strong> from the Products Ordered file, mapped to their group and high-level category.
-            </p>
-            <p>
-              Four places this shows up:
+              A penetration goal is the share of stores a SKU group <em>should</em> be on. The SKU Engine and the Reps page both show it:
             </p>
             <ul className="list-disc pl-5 space-y-1.5 my-3">
-              <li><strong>Categories tab → Top Performing Products table</strong> — bottom of the page. Filter by high-level category chip (Flower, Vapes, Prerolls…), brand, or search. Sortable by revenue, units, or velocity per month. Shows rank within category, share-of-category bar, and the SKU group each product rolls up into. Click any row to open that SKU group's detail drawer.</li>
-              <li><strong>SKU Engine → SKU detail drawer → Individual Products section</strong> — when you click into a SKU group, scroll past the carriers/non-carriers tables and you'll find every individual product inside that group ranked by revenue, with the share each takes of group revenue. Useful for "this group is doing $1.7M — which actual SKUs are driving it?"</li>
-              <li><strong>Reps tab</strong> — a new top-level tab. Per-rep cards show stores, total revenue, missed-rev opportunity, and store-tag mix. Click a rep card and the lower panes show: their <em>top SKU groups</em> (computed by summing the matrix rows for their clients) and their <em>top individual products to pitch</em> in the categories they already cover. Products their stores aren't yet carrying are flagged <span className="text-amber-700 font-mono text-[10px] uppercase">opp</span>.</li>
-              <li><strong>Call sheets</strong> — both the printable PDF and the CSV export now include the top 3 individual product names (with brands) under each pitched SKU group. Reps walk in with concrete product names instead of "I should pitch you something from the 1g Platinum Prerolls group."</li>
+              <li><strong>Penet.</strong> — the share of stores currently carrying the group.</li>
+              <li><strong>Goal</strong> — the target share. Colored green when penetration is at or above goal, amber when it's within ten points, rose when it's further off.</li>
+              <li><strong>To Goal</strong> — how many more stores need to pick it up to hit the goal. A <span className="font-mono">✓</span> means the goal is met; <span className="font-mono">+12</span> means twelve placements to go.</li>
+            </ul>
+            <p>
+              On the Reps page the goal math is scoped to that rep's own book — "To Goal" there is the number of <em>their</em> stores still needed, so it's a direct to-do list.
+            </p>
+          </Section>
+
+          <Section refs={refs} id="closures" title="Void closures">
+            <p>
+              A <strong>void</strong> is an empty (store&nbsp;×&nbsp;SKU group) cell — a store that doesn't carry something. <strong>Closing the void</strong> means that store places its first real order for it. The Closures tab is the running log of those wins.
+            </p>
+            <ul className="list-disc pl-5 space-y-1.5 my-3">
+              <li><strong>How it's detected</strong> — a daily job pulls the live API and compares it to the previous snapshot. Any (store, SKU group) pair that was at zero revenue and is now positive is logged as a closure, dated, with both the sales rep and the VMI rep.</li>
+              <li><strong>Filters</strong> — pick a date range (7d / 30d / 90d / MTD / QTD / YTD / All / Custom), switch between Sales and VMI attribution, filter to one rep, or search store / SKU / category.</li>
+              <li><strong>KPI strip</strong> — closures, revenue captured, units, unique stores and unique SKU groups for whatever's currently in view.</li>
+              <li><strong>Per-rep summary</strong> — the right rail ranks reps by revenue captured; click a rep to filter the log to them.</li>
+              <li><strong>Export</strong> — <code>↓ Export CSV</code> downloads the filtered log for reporting up the chain.</li>
             </ul>
             <p className="text-stone-600 text-[12px]">
-              Limitation worth knowing: we don't have product&nbsp;×&nbsp;client attribution in the source data — only product totals. So when the Reps tab shows "top products to pitch in this rep's lead categories," that ranking is global within the categories the rep covers, not per-rep attribution. It's a "what to walk in with" reference, not a sales-credit ledger.
+              The report only counts placements after the early-May baseline — that's the first reliable snapshot, so anything before it isn't a true "new" placement. Test/demo store accounts are excluded, and a store that simply gains a "- VMI" / "- 1WT" suffix is treated as the same store, not a wave of new closures.
             </p>
           </Section>
 
-          <Section refs={refs} id="views" title="The 6 main views">
-            <p>The app has six primary surfaces. Switch between them with the tab bar (or hit <Kbd>1</Kbd>–<Kbd>6</Kbd>).</p>
-
-            <Subsection name="SKU Engine">
-              <p>The master table. Every active SKU, every metric, sortable by every column, filterable by category and tag. Click any row to open the detail panel.</p>
-              <Example use="I want to find SKUs to push" do='Open SKU Engine → sort by Opportunity ($) descending → filter Tag = PUSH → those rows are SKUs that perform well at the stores carrying them but have meaningful distribution gaps. Open one, copy the "retailers not carrying" list into your call queue.' />
-            </Subsection>
-
-            <Subsection name="Retailers">
-              <p>The store side of the same coin. Every retailer with their revenue, order count, SKU coverage, and a Store Opportunity score with one of five tags. Click a row to open the retailer detail panel with their missing top SKUs and a suggested order bundle.</p>
-              <Example use="I want a list of stores to call this week" do='Open Retailers → filter Tag = CALL NOW → sort by Opportunity Score → the top 10 are your shortlist. Click each, scan the missing SKUs and suggested bundle, then export a combined call sheet from Bulk Call Sheet.' />
-            </Subsection>
-
-            <Subsection name="Distribution Matrix">
-              <p>SKUs as rows, retailers as columns. A check mark plus a heatmap cell means that store carries that SKU; the warmer the color the higher the revenue. Empty cells are placement opportunities. Sticky headers let you scroll a long way without losing context.</p>
-              <Example use="I want to see who carries my whole top 10" do='Sort SKU rows by score → scan the top 10 across the column axis → any store with white cells in the top 10 is a Cross-Sell candidate. Click a white cell to jump straight into a SKU × retailer view.' />
-            </Subsection>
-
-            <Subsection name="Categories">
-              <p>SKU groups grouped under their high-level category (Flower, Vapes, Prerolls, etc.). Includes per-category penetration rings, a Category Index summary, and the new <strong>Top Performing Products</strong> table at the bottom — the individual-SKU drill-down by category.</p>
-              <Example use="I want to find a brand's best-selling individual products in Vapes" do='Open Categories → scroll to Top Performing Products → click the Vapes chip → set the Brand dropdown to that brand. Sort by Revenue or Vel/mo. The list shows you the actual product names, not roll-ups.' />
-            </Subsection>
-
-            <Subsection name="Reps">
-              <p>Per-sales-rep view. Cards across the top with each rep's revenue, store count, missed-rev opportunity, and AT RISK / HIGH VALUE counts. Click a rep card and two panels appear below: their top SKU groups (attributed via their clients) and the top individual products to pitch in their lead categories. Each rep card has a 📄 button that prints a combined call sheet for their entire book.</p>
-              <Example use="I want to send Ashlea a call sheet for her whole book" do='Open Reps → click her card → press the 📄 print icon. The system generates a combined printable PDF — one page per store — with current stats, the missing top SKU groups, top individual products under each, and talking points.' />
-            </Subsection>
-
-            <Subsection name="Performance Buckets">
-              <p>Curated lists for the things you'd otherwise have to filter for: Top Revenue Drivers, <strong>Highest Velocity</strong>, Most Distributed, <strong>Hidden Winners</strong> (high velocity but low distribution — the most profitable SKUs to push next), and Weak SKUs. Each card links back to the master table or detail panel.</p>
-              <Example use="I want to find SKUs that are quietly winning" do='Open Performance Buckets → look at Hidden Winners. These are SKUs that move at the stores carrying them but only sit on a fraction of doors. Pitching them is the single highest-leverage thing a rep can do.' />
-            </Subsection>
-          </Section>
-
-          <Section refs={refs} id="velocity" title="Finding velocity leaders">
-            <p>
-              Velocity is one of the four most-asked-about metrics — units sold per carrying store per month — so the app surfaces it in five different places depending on what you're hunting for:
-            </p>
+          <Section refs={refs} id="exports" title="Exporting data">
+            <p>Everything you can see, you can take with you. There are CSV buttons on three tables plus the call-sheet exports:</p>
             <ul className="list-disc pl-5 space-y-1.5 my-3">
-              <li><strong>SKU Engine view toggle</strong> — at the top of the master table there's a small <code>Revenue · Velocity · Distribution · Opportunity</code> switcher. Click <em>Velocity</em> and the velocity column gets highlighted emerald. Then click the column header to sort descending. That's your full ranked list across all 111 SKU groups with every other metric visible side-by-side.</li>
-              <li><strong>Buckets → Highest Velocity</strong> — a curated card with the top velocity SKUs already shortlisted.</li>
-              <li><strong>Buckets → Hidden Winners</strong> — high velocity <em>and</em> low distribution. The most profitable SKUs to pitch next, by definition. Start here on Monday mornings.</li>
-              <li><strong>Categories → Top Performing Products</strong> table — the new individual-product table has a <em>Vel / mo</em> column. Sort by it to find the fastest-selling individual products inside any high-level category.</li>
-              <li><strong>Scoring weights → Velocity slider</strong> — push it to 100% and reset the others to 0% if you want a pure velocity-first ranking applied across the whole app at once. Tags will recompute around the new ranking.</li>
+              <li><strong>SKU Engine → ↓ CSV</strong> — the full SKU table with every metric column, in whatever order and filter you've set.</li>
+              <li><strong>Reps → store list → ↓ CSV</strong> — the selected rep's stores, with the active tag filter and sort applied.</li>
+              <li><strong>Closures → ↓ Export CSV</strong> — the filtered closure log.</li>
+              <li><strong>Call sheets</strong> — printable PDF or CSV, per store or in bulk (see the next section).</li>
             </ul>
-          </Section>
-
-          <Section refs={refs} id="weights" title="Scoring weights explained">
-            <p>
-              Every SKU gets a Score from 0 to 100. The score is a weighted blend of six factors, normalized 0–1 across the SKU universe.
-              The right rail exposes all six weights as live sliders. Move a slider and the table, the rankings, and the tags recompute immediately.
-              The default weights are tuned for the typical "what should we sell more of" question, but the right blend depends on what you're trying to do today.
-            </p>
-
-            <table className="w-full text-[12px] my-4 border border-stone-200 rounded overflow-hidden">
-              <thead className="bg-stone-50">
-                <tr><th className="text-left px-3 py-2 font-semibold">Weight</th><th className="text-left px-3 py-2 font-semibold">What it rewards</th><th className="text-left px-3 py-2 font-semibold">Crank when…</th></tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100">
-                <tr><td className="px-3 py-2 font-mono text-stone-700">Revenue 25%</td><td className="px-3 py-2">Total dollars contributed across all stores</td><td className="px-3 py-2 text-stone-600">You care about absolute size — protecting the top of the catalog.</td></tr>
-                <tr><td className="px-3 py-2 font-mono text-stone-700">Units 15%</td><td className="px-3 py-2">Total quantities moved</td><td className="px-3 py-2 text-stone-600">You're optimizing throughput / shelf turn instead of margin.</td></tr>
-                <tr><td className="px-3 py-2 font-mono text-stone-700">Velocity 20%</td><td className="px-3 py-2">Units per carrying store per month</td><td className="px-3 py-2 text-stone-600">You want the fastest movers per door — the SKUs that <em>actually sell through</em>.</td></tr>
-                <tr><td className="px-3 py-2 font-mono text-stone-700">Distribution 15%</td><td className="px-3 py-2">% of stores already carrying it</td><td className="px-3 py-2 text-stone-600">You're prioritizing proven products with broad acceptance.</td></tr>
-                <tr><td className="px-3 py-2 font-mono text-stone-700">Reorder 10%</td><td className="px-3 py-2">Estimated reorder frequency</td><td className="px-3 py-2 text-stone-600">You care about stickiness — SKUs that come back, not one-and-dones.</td></tr>
-                <tr><td className="px-3 py-2 font-mono text-stone-700">Opportunity 15%</td><td className="px-3 py-2">Estimated $ left at non-carrying stores</td><td className="px-3 py-2 text-stone-600">You're hunting growth — SKUs with the most untapped distribution.</td></tr>
-              </tbody>
-            </table>
-
-            <p>
-              The Store Opportunity score has its own four sliders: <em>Missing Top SKUs</em>, <em>Category Gap</em>, <em>Spend Potential</em> (current spend vs peer-store benchmark), and <em>Order Frequency</em>.
-              The tag a store gets — HIGH VALUE, CROSS-SELL, etc. — derives from this score and the underlying mix.
-            </p>
-            <p>
-              <strong>Reset</strong> snaps every slider back to defaults. Use it when you want to compare a custom view to the canonical one, or before sharing a screenshot.
+            <p className="text-stone-600 text-[12px]">
+              CSV files open cleanly in Excel and Google Sheets and are named with the rep or date range so they file themselves.
             </p>
           </Section>
 
-          <Section refs={refs} id="tags" title="Tag legend">
-            <h3 className="text-stone-700 font-semibold text-[13px] mt-4 mb-2 uppercase tracking-wider">SKU tags</h3>
+          <Section refs={refs} id="tags" title="Store tag legend">
+            <p>Every retailer carries one of five tags, derived from its opportunity score and buying mix.</p>
             <div className="space-y-2 my-3">
-              <TagRow tag="SCALE"   def="High score, high velocity, strong reorder. The catalog's front line." action="Defend distribution, lock contracts, build secondary placements." />
-              <TagRow tag="PUSH"    def="Strong performance at the stores carrying it but distribution is thin." action="Pitch to non-carrying stores. The single most profitable rep activity." />
-              <TagRow tag="MONITOR" def="Mid-pack across most metrics. Holding its own but not pulling weight." action="Watch for movement before deciding to invest or cut." />
-              <TagRow tag="FIX"     def="Weak velocity or inconsistent reorder despite reasonable distribution." action="Diagnose: pricing, packaging, in-store visibility. Remove obstacles." />
-              <TagRow tag="CUT"     def="Low score across every metric. Tying up SKU slots that better products need." action="Discontinue or sunset. Free the slot." />
-            </div>
-
-            <h3 className="text-stone-700 font-semibold text-[13px] mt-6 mb-2 uppercase tracking-wider">Store tags</h3>
-            <div className="space-y-2 my-3">
-              <TagRow tag="CALL NOW" def="High opportunity score AND high spend potential. Underweight a top customer." action="Call this week. They're the highest-leverage call on the board." />
-              <TagRow tag="CROSS-SELL"            def="Healthy account but missing several top-ranked SKUs they should logically carry." action="Pitch the missing top SKUs as add-ons during their next reorder." />
-              <TagRow tag="HIGH UPSIDE"    def="Buying from one or two categories only — clear category whitespace." action="Introduce them to the gap category with a small starter bundle." />
-              <TagRow tag="LOW PRIORITY"          def="Already well covered or too small to move the needle this period." action="Quarterly check-in only. Don't waste reps' time chasing it." />
-              <TagRow tag="AT RISK"               def="Order cadence has slipped vs their own baseline; they used to buy more." action="Service call before they churn. Find out what changed." />
+              <TagRow tag="CALL NOW" def="High opportunity score and high spend potential — you're underweight on a top customer." action="Call this week. It's the highest-leverage call on the board." />
+              <TagRow tag="CROSS-SELL" def="Healthy account missing several top-ranked SKU groups it should logically carry." action="Pitch the missing top SKUs as add-ons on the next reorder." />
+              <TagRow tag="HIGH UPSIDE" def="Buying from only one or two categories — clear category whitespace." action="Introduce the gap category with a small starter bundle." />
+              <TagRow tag="LOW PRIORITY" def="Already well covered, or too small to move the needle this period." action="Quarterly check-in only." />
+              <TagRow tag="AT RISK" def="Order cadence has slipped versus the store's own baseline — they used to buy more." action="Service call before they churn. Find out what changed." />
             </div>
           </Section>
 
@@ -204,53 +197,45 @@ function HowTo({a}) {
             <table className="w-full text-[12px] my-4 border border-stone-200 rounded overflow-hidden">
               <tbody className="divide-y divide-stone-100">
                 <tr><td className="px-3 py-2 font-mono w-24"><Kbd>/</Kbd></td><td className="px-3 py-2">Focus the search box on the active table</td></tr>
-                <tr><td className="px-3 py-2 font-mono"><Kbd>1</Kbd>–<Kbd>6</Kbd></td><td className="px-3 py-2">Jump between tabs: 1 SKU Engine · 2 Retailers · 3 Matrix · 4 Categories · 5 Reps · 6 Buckets</td></tr>
+                <tr><td className="px-3 py-2 font-mono"><Kbd>1</Kbd>–<Kbd>8</Kbd></td><td className="px-3 py-2">Jump between tabs: 1 SKU Engine · 2 Retailers · 3 Matrix · 4 Categories · 5 Top SKUs · 6 Reps · 7 Closures · 8 Buckets</td></tr>
                 <tr><td className="px-3 py-2 font-mono"><Kbd>Esc</Kbd></td><td className="px-3 py-2">Close the open detail panel or modal</td></tr>
                 <tr><td className="px-3 py-2 font-mono"><Kbd>Tab</Kbd></td><td className="px-3 py-2">Walk forward through interactive elements (focus rings show where you are)</td></tr>
-                <tr><td className="px-3 py-2 font-mono"><Kbd>↑</Kbd> <Kbd>↓</Kbd></td><td className="px-3 py-2">In a focused slider, nudge the weight by 1%</td></tr>
               </tbody>
             </table>
           </Section>
 
           <Section refs={refs} id="callsheet" title="Generating a call sheet">
-            <p>
-              The call-sheet export is the point of the app. Everything else is staging for this moment.
-            </p>
+            <p>The call-sheet export is the point of the app. Everything else is staging for this moment.</p>
             <ol className="list-decimal pl-5 space-y-2 my-3">
-              <li><strong>Pick a target.</strong> Either click a single retailer to open their detail panel, or click the <em>Bulk Call Sheet</em> button in the top bar to bundle multiple stores in one document.</li>
-              <li><strong>Choose a scope.</strong> Bulk export gives you three modes: <em>By Rep</em> (every store assigned to a sales rep), <em>By Store Tag</em> (every HIGH VALUE store, every AT RISK store, etc.), or <em>Manual Pick</em> (cherry-pick from a sortable list).</li>
-              <li><strong>Pick the format.</strong> <em>CSV</em> for spreadsheets and CRM import. <em>Print / PDF</em> for a clean one-page-per-store document with the rep's name, the store's current stats, the missing top SKUs, suggested order quantities, estimated revenue opportunity, and short data-driven talking points.</li>
-              <li><strong>Use it on the call.</strong> The talking points are written to be read aloud — concrete numbers, no hedging. The suggested order bundle gives the rep something specific to ask for; even if the customer counters down, the anchor is doing work.</li>
+              <li><strong>Pick a target.</strong> Click a single retailer to open their detail panel, or click <em>↓ Bulk Call Sheet</em> in the top bar to bundle many stores into one document.</li>
+              <li><strong>Choose a scope.</strong> Bulk export gives three modes: <em>By Rep</em> (every store under a sales or VMI rep), <em>By Store Tag</em> (every CALL NOW store, every AT RISK store, etc.), or <em>Manual Pick</em> from a sortable list.</li>
+              <li><strong>Pick the format.</strong> <em>CSV</em> for spreadsheets and CRM import. <em>Print / PDF</em> for a clean one-page-per-store document with the rep's name, current stats, missing top SKUs, suggested quantities, estimated revenue opportunity, the top individual products under each SKU group, and short data-driven talking points.</li>
+              <li><strong>Use it on the call.</strong> The talking points are written to be read aloud — concrete numbers, no hedging. The suggested bundle gives the rep something specific to ask for.</li>
             </ol>
             <p className="text-stone-600 text-[12px]">
-              Tip: hit print preview before printing. The print stylesheet hides the navigation, sliders, and right rail, leaving only the call sheet itself.
+              Tip: hit print preview first. The print stylesheet drops the navigation and right rail, leaving only the call sheet.
             </p>
           </Section>
 
-          <Section refs={refs} id="sku-detail" title="Reading the SKU detail panel">
+          <Section refs={refs} id="sku-detail" title="The SKU detail panel">
             <p>Click any SKU row in the master table or matrix and the detail panel slides in. Top to bottom:</p>
             <ul className="list-disc pl-5 space-y-1.5 my-3">
-              <li><strong>Header strip</strong> — name, category, score with rank and percentile, suggested action, and the SKU's tag.</li>
-              <li><strong>Metric grid</strong> — the eighteen master-table columns laid out as cards so they're easier to skim than the row.</li>
-              <li><strong>Trend line</strong> — share of total revenue this SKU contributed across the period. The current build samples four time slices (the file is a period rollup, not week-resolved); read it as "shape," not "exact velocity by week."</li>
-              <li><strong>Retailers carrying</strong> — sortable table of every store that bought this SKU, with their revenue and unit contribution. Click a store to jump to its detail panel.</li>
-              <li><strong>Retailers <em>not</em> carrying</strong> — the placement opportunity, sorted by store opportunity score so the highest-leverage targets float to the top.</li>
-              <li><strong>Suggested action</strong> — Expand / Push / Fix / Cut, with a single sentence of rationale tied to the actual numbers.</li>
-              <li><strong>Individual Products</strong> — every real product SKU rolling up into this group, ranked by revenue with share-of-group bars. Use the "Show all" toggle to expand past the top 8. This is the answer to "we know this group does $X, but which actual SKUs are doing the work?"</li>
+              <li><strong>Header</strong> — name, category and a one-line suggested action.</li>
+              <li><strong>Metric grid</strong> — the master-table columns laid out as cards, easier to skim than the row.</li>
+              <li><strong>Retailers carrying</strong> — a sortable table of every store buying this SKU group, with revenue and units. Click a store to jump to its detail panel.</li>
+              <li><strong>Retailers <em>not</em> carrying</strong> — the placement opportunity, sorted by store opportunity score so the best targets float up.</li>
+              <li><strong>Individual products</strong> — every real product SKU rolling up into the group, ranked by revenue with share-of-group bars — the answer to "this group does $X, which actual SKUs are doing the work?"</li>
             </ul>
           </Section>
 
-          <Section refs={refs} id="matrix" title="Reading the Distribution Matrix">
-            <p>
-              The Distribution Matrix is the densest view in the app. It is a literal SKU × retailer grid: every SKU is a row, every retailer is a column.
-            </p>
+          <Section refs={refs} id="matrix" title="The Distribution Matrix">
+            <p>The densest view in the app: a literal SKU&nbsp;×&nbsp;retailer grid, every SKU group a row, every retailer a column.</p>
             <ul className="list-disc pl-5 space-y-1.5 my-3">
-              <li><strong>Cell color</strong> — heatmap by per-cell revenue. Darker = higher dollar contribution. Empty cells are placement gaps.</li>
-              <li><strong>Sticky headers</strong> — the SKU name column and the retailer name row stay visible as you scroll. You never lose the axis.</li>
-              <li><strong>Click a filled cell</strong> — opens that SKU's detail panel scrolled to that store.</li>
-              <li><strong>Click an empty cell</strong> — also opens the SKU's detail panel, with the missing-store row highlighted in the "not carrying" list — a one-click pivot to the call.</li>
-              <li><strong>Row totals</strong> — the rightmost column shows the SKU's total revenue. Column totals at the bottom show each store's total spend.</li>
-              <li><strong>Filters</strong> — restrict by category or by SKU tag to make the grid scannable. The matrix is fastest when you've narrowed it to a story.</li>
+              <li><strong>Cell color</strong> — heatmap by per-cell revenue. Darker is higher. Empty cells are placement gaps.</li>
+              <li><strong>Sticky headers</strong> — the SKU name column and the retailer row stay put as you scroll, so you never lose the axis.</li>
+              <li><strong>Click a filled cell</strong> — opens that SKU's detail panel focused on that store.</li>
+              <li><strong>Click an empty cell</strong> — opens the SKU detail panel with the missing store highlighted in the not-carrying list — a one-click pivot to the call.</li>
+              <li><strong>Filter by category</strong> — narrow the grid until it tells one story; the matrix is fastest when it's small.</li>
             </ul>
           </Section>
 
@@ -261,39 +246,42 @@ function HowTo({a}) {
                 <span className="text-stone-500">Days covered</span><span className="text-stone-800">{a.meta.periodDays}</span>
                 <span className="text-stone-500">Total Revenue</span><span className="text-stone-800">${a.meta.totalRevenue.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
                 <span className="text-stone-500">Total Units</span><span className="text-stone-800">{a.meta.totalUnits.toLocaleString()}</span>
-                <span className="text-stone-500">Active SKUs</span><span className="text-stone-800">{a.skus.length}</span>
+                <span className="text-stone-500">SKU groups</span><span className="text-stone-800">{a.skus.length}</span>
                 <span className="text-stone-500">Retailers</span><span className="text-stone-800">{a.meta.totalClients}</span>
-                <span className="text-stone-500">Source</span><span className="text-stone-800">Bamboo Dashboard pivot</span>
+                <span className="text-stone-500">Source</span><span className="text-stone-800">Bamboo Intelligence API (live)</span>
               </div>
             </div>
             <p>
-              All revenue and units in the app reconcile to the cent against the Total rows in the Bamboo Dashboard pivot file. The Performance file is used only to fill rep assignments and store metadata — it never overrides the pivot's totals. If a number you see here doesn't match a number a colleague is quoting from another tool, the discrepancy is between that tool and the pivot, not between this app and the pivot.
+              The app reads the live Bamboo Intelligence API on load, so the numbers are current every time you open it. Trade-sample-only stores are filtered out so the reports count revenue-bearing business. The Closures tab is the one exception to "live" — it's a running history built by a daily job, because a closure only exists relative to the day before.
             </p>
           </Section>
 
           <Section refs={refs} id="faq" title="FAQ">
-            <Faq q="Why are some SKUs CUT?">
-              <p>The CUT tag fires when a SKU sits at the bottom of the score distribution across <em>every</em> factor — low revenue, low units, low velocity, thin distribution, weak reorder, no meaningful opportunity. It doesn't mean the SKU is bad in isolation. It means the slot it occupies is more valuable than the SKU is. Sunset and replace.</p>
+            <Faq q="What exactly counts as a closure?">
+              <p>A (store × SKU group) pair that had zero revenue in the previous daily snapshot and a real order in the latest one. It's a brand-new placement — a void that closed. Re-orders of something a store already carries are not closures.</p>
             </Faq>
-            <Faq q="What's the difference between Velocity and Reorder?">
-              <p>Velocity is units sold per carrying store per month — how fast it moves <em>at the door</em>. Reorder is how often a store comes back for it — how <em>sticky</em> it is. A high-velocity / low-reorder SKU is a one-time impulse buy; a high-reorder / moderate-velocity SKU is a staple. The two together are what defines a SCALE product.</p>
+            <Faq q="Why did a store I know I sold to not show up in Closures?">
+              <p>Three common reasons: the order was for a SKU group the store already carried (a re-order, not a new placement); it landed on or before the early-May baseline; or it's a trade-sample-only line. If none of those fit, flag it to ops.</p>
+            </Faq>
+            <Faq q="What's the difference between Penet., Goal and To Goal?">
+              <p>Penet. is where a SKU group is today (share of stores carrying it). Goal is where it should be. To Goal is the gap expressed as a store count — how many more placements it takes. On the Reps page, To Goal is scoped to that rep's own stores.</p>
+            </Faq>
+            <Faq q="The missing-product finder shows nothing for a store — why?">
+              <p>If the store already carries that SKU group, there's nothing to pitch — the finder is for stores that carry none of it. Pick a store marked ○ in the dropdown; ✓ means they already have it.</p>
+            </Faq>
+            <Faq q="Does the CSV export include everything or just what I see?">
+              <p>Just what you see. Every CSV button exports the current rows with your filters, search and sort applied — so set the view up the way you want the file, then export.</p>
+            </Faq>
+            <Faq q="Why is a store missing from the reports entirely?">
+              <p>Most likely it has only ever taken trade samples, which are filtered out so the reports reflect real revenue. It returns automatically the first time it places a paid order.</p>
             </Faq>
             <Faq q="How is Opportunity $ calculated?">
-              <p>For each SKU, take the average revenue per carrying store. Multiply by the number of stores <em>not</em> currently carrying it, weighted by each non-carrying store's overall spend potential. The result is a deliberately conservative estimate of dollars left on the table — it assumes a non-carrying store would buy at the average rate of an existing carrier, not the best one.</p>
-            </Faq>
-            <Faq q="Why do some stores have 0 missing SKUs?">
-              <p>"Missing" means missing from the rep's current pitch list — the global top SKUs by score. A store with 0 missing SKUs is already carrying the top of the catalog. They're either tagged LOW PRIORITY (you've maximized them) or, more interestingly, you should re-look at them with the weights tilted toward Velocity or Opportunity to find second-tier SKUs to expand into.</p>
-            </Faq>
-            <Faq q="Why does my call-sheet show fewer SKUs than I expected?">
-              <p>The call sheet only lists SKUs ranked highly enough to be worth pitching <em>and</em> not already carried by the store. If a store is already at full coverage of the top 20, the sheet will be short by design — that's a feature, not a bug. Tilt the SKU score weights toward Opportunity and re-export to surface deeper cuts.</p>
-            </Faq>
-            <Faq q="Can I trust the score if I move the sliders?">
-              <p>Yes — the score is recomputed deterministically every time you move a slider, with no caching or staleness. The sliders are <em>your</em> editorial control over what "best SKU" means today. The defaults are a sensible starting point, not a sacred ratio.</p>
+              <p>For each SKU group, take the average revenue per carrying store, multiply by the number of stores not carrying it, and weight by each non-carrier's overall spend potential. It's a deliberately conservative estimate of dollars left on the table.</p>
             </Faq>
           </Section>
 
           <footer className="mt-12 pt-6 border-t border-stone-200 text-[11px] text-stone-500 font-mono">
-            Bamboo SKU Intelligence v2.1 · {a.meta.startDate} → {a.meta.endDate} · {a.meta.totalClients} retailers · {a.skus.length} SKU groups · {(a.products||[]).length} individual products · {a.meta.totalUnits.toLocaleString()} units
+            Bamboo SKU Intelligence v2.2 · {a.meta.startDate} → {a.meta.endDate} · {a.meta.totalClients} retailers · {a.skus.length} SKU groups · {(a.products||[]).length} individual products · {a.meta.totalUnits.toLocaleString()} units
           </footer>
         </article>
       </div>
