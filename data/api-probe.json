@@ -1,0 +1,68 @@
+{
+  "generated_at": "2026-05-27T00:45:36.838Z",
+  "fact_keys": [
+    "category_client_sales",
+    "category_rep_sales",
+    "client_product_sales",
+    "client_rep_sales",
+    "non_sales_by_category",
+    "product_sales"
+  ],
+  "has_client_product_sales": true,
+  "cps_keys": [
+    "col",
+    "col_dim",
+    "last_ordered_at_utc",
+    "revenue_cents",
+    "row",
+    "row_dim",
+    "shape",
+    "units"
+  ],
+  "cps_row_dim": "clients",
+  "cps_col_dim": "products",
+  "cps_shape": [
+    423,
+    2385
+  ],
+  "cps_row_len": 140854,
+  "cps_revenue_sum_cents": 2633272079,
+  "cps_units_sum": 4677341,
+  "cps_sample": {
+    "row": [
+      48,
+      48,
+      48,
+      48,
+      48
+    ],
+    "col": [
+      103,
+      333,
+      363,
+      1275,
+      501
+    ],
+    "revenue_cents": [
+      6500,
+      6650,
+      5830,
+      4668,
+      3663
+    ],
+    "units": [
+      13,
+      50,
+      5,
+      4,
+      11
+    ],
+    "last_ordered_at_utc": [
+      "2026-03-12T14:41:59Z",
+      "2026-04-16T18:40:45Z",
+      "2026-04-10T03:03:43Z",
+      "2026-05-21T00:02:45Z",
+      "2026-04-23T18:14:19Z"
+    ]
+  }
+}
