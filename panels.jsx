@@ -636,69 +636,121 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
 // API hasn't exposed that fact yet.
 function MissingProductsByCategory({a, client, onPickProduct}) {
   const cp = a.clientProducts;
+  const [mode, setMode] = useState('missing');   // 'missing' | 'carrying'
 
   const byCat = useMemo(() => {
     if (!cp || !a.products || !a.products.length) return [];
     const carried = cp.get(client.i) || new Map();
-    const map = new Map();
     const all = [];
     for (const p of a.products) {
-      if (carried.has(p.i)) continue;
-      const cat = p.c || 'Other';
-      if (!map.has(cat)) map.set(cat, []);
-      map.get(cat).push(p);
-      all.push(p);
+      if (mode === 'missing') {
+        if (carried.has(p.i)) continue;
+        all.push(p);
+      } else {
+        const cell = carried.get(p.i);
+        if (!cell) continue;
+        all.push({...p, _r: cell.r, _u: cell.u, _ts: cell.ts});
+      }
     }
     if (!all.length) return [];
-    // Top-25 chip across all categories, ranked by velocity (units/month).
-    // `all` is the full velocity-sorted list (used when the search box is active).
-    const top50All = [...all].sort((x, y) => (y.vel || 0) - (x.vel || 0));
+    const sortAll = mode === 'missing'
+      ? (x, y) => (y.vel || 0) - (x.vel || 0)
+      : (x, y) => (y._r || 0) - (x._r || 0);
+    const sortCat = mode === 'missing'
+      ? (x, y) => (y.rev || 0) - (x.rev || 0)
+      : (x, y) => (y._r || 0) - (x._r || 0);
+    const topAll = [...all].sort(sortAll);
     const head = {
-      cat: '__top50__',
-      label: 'Top 50 missing',
+      cat: '__topall__',
+      label: mode === 'missing' ? 'Top 50 missing' : 'Top 50 carrying',
       count: Math.min(50, all.length),
-      top: top50All.slice(0, 50),
-      all: top50All,
+      top: topAll.slice(0, 50),
+      all: topAll,
       isAll: true,
     };
+    const map = new Map();
+    for (const p of all) {
+      const c = p.c || 'Other';
+      if (!map.has(c)) map.set(c, []);
+      map.get(c).push(p);
+    }
     const rest = [];
     for (const [cat, items] of map) {
-      items.sort((x, y) => (y.rev || 0) - (x.rev || 0));
-      rest.push({cat, label: cat, count: items.length, top: items.slice(0, 15),
-                 all: items,
-                 totalRev: items.reduce((s, p) => s + (p.rev || 0), 0)});
+      items.sort(sortCat);
+      rest.push({cat, label: cat, count: items.length, top: items.slice(0, 15), all: items});
     }
     rest.sort((x, y) => (x.label || x.cat).localeCompare(y.label || y.cat));
     return [head, ...rest];
-  }, [a, cp, client]);
+  }, [a, cp, client, mode]);
 
   const [activeCat, setActiveCat] = useState(null);
   const [search, setSearch]       = useState('');
   useEffect(() => { setActiveCat(byCat[0] ? byCat[0].cat : null); }, [byCat]);
-  useEffect(() => { setSearch(''); }, [activeCat]);   // reset search when category changes
+  useEffect(() => { setSearch(''); }, [activeCat, mode]);
 
-  if (!cp || !byCat.length) return null;
+  if (!cp) return null;
+
+  const ModeToggle = () => (
+    <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+      {[['missing','Missing'],['carrying','Carrying']].map(([k,l]) => (
+        <button key={k} onClick={() => setMode(k)}
+                className={`px-2.5 py-0.5 rounded ${mode===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+      ))}
+    </div>
+  );
+
+  if (!byCat.length) {
+    // Carrying mode with no carry data, or no missing data — keep the toggle visible so the rep can flip back.
+    return (
+      <div className="border-b border-slate-200">
+        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
+            Top products by category <span className="text-slate-500 normal-case">— {mode === 'missing' ? 'this store carries everything we sell' : "this store hasn't bought any individual products this year"}</span>
+          </h3>
+          <ModeToggle />
+        </div>
+      </div>
+    );
+  }
+
   const active = byCat.find(c => c.cat === activeCat) || byCat[0];
 
-  // Visible rows: when the search box is empty, show the curated top list
-  // (top 50 by velocity for Top 50, top 15 by revenue for a category).
-  const downloadMissingCsv = () => {
-    const headers = ['Rank','Product','Brand','SKU Group','Category','Global Revenue','Units','Velocity / mo'];
-    const baseList = (active.all || active.top);
-    const rowsCsv = baseList.map((p, i) => {
-      const sg = a.skuById.get(p.sg);
-      return [
-        i + 1, p.n, p.b || '',
-        sg ? sg.n : '', p.c || '',
-        Math.round(p.rev || 0), p.u || 0,
-        p.vel != null ? Number(p.vel).toFixed(1) : '',
-      ];
-    });
+  const downloadCsv = () => {
+    let headers, rowsCsv;
+    const baseList = active.all || active.top;
+    if (mode === 'missing') {
+      headers = ['Rank','Product','Brand','SKU Group','Category','Global Revenue','Units','Velocity / mo'];
+      rowsCsv = baseList.map((p, i) => {
+        const sg = a.skuById.get(p.sg);
+        return [
+          i + 1, p.n, p.b || '',
+          sg ? sg.n : '', p.c || '',
+          Math.round(p.rev || 0), p.u || 0,
+          p.vel != null ? Number(p.vel).toFixed(1) : '',
+        ];
+      });
+    } else {
+      headers = ['Rank','Product','Brand','SKU Group','Category','$ at Store','Store Units','Last Ordered','Global Revenue','Global Units','Velocity / mo'];
+      rowsCsv = baseList.map((p, i) => {
+        const sg = a.skuById.get(p.sg);
+        return [
+          i + 1, p.n, p.b || '',
+          sg ? sg.n : '', p.c || '',
+          Math.round(p._r || 0), p._u || 0,
+          p._ts ? String(p._ts).slice(0, 10) : '',
+          Math.round(p.rev || 0), p.u || 0,
+          p.vel != null ? Number(p.vel).toFixed(1) : '',
+        ];
+      });
+    }
     const slug = (client.n || 'store').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
-    const scope = active.isAll ? 'top50-by-velocity' : ('category-' + (active.cat || '').replace(/[^a-z0-9]+/gi, '-').toLowerCase());
-    window.BambooExport.downloadCSV(`missing-products-${slug}-${scope}-${a.meta.endDate}.csv`, headers, rowsCsv);
+    const scope = active.isAll
+      ? ('top50-' + mode)
+      : ('category-' + (active.cat || '').replace(/[^a-z0-9]+/gi, '-').toLowerCase());
+    const fileMode = mode === 'missing' ? 'missing-products' : 'carrying-products';
+    window.BambooExport.downloadCSV(`${fileMode}-${slug}-${scope}-${a.meta.endDate}.csv`, headers, rowsCsv);
   };
-  // When the user is typing, search the full unsliced list and cap at 50.
+
   const visibleRows = (() => {
     const base = active.all || active.top;
     if (!search.trim()) return active.top;
@@ -716,18 +768,33 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
     return out;
   })();
 
+  const headerHint = mode === 'missing'
+    ? (active.isAll
+        ? 'top 50 by velocity (units / month) across all categories'
+        : ('top 15 by revenue in ' + (active.label || active.cat)))
+    : (active.isAll
+        ? 'top 50 by spend at this store across all categories'
+        : ('top 15 by spend at this store in ' + (active.label || active.cat)));
+  const headerSuffix = mode === 'missing'
+    ? "· products this store hasn't bought this year"
+    : "· products this store has bought this year";
+  const shortHint = mode === 'missing'
+    ? (active.isAll ? 'top 50 by velocity' : 'top 15 by revenue')
+    : (active.isAll ? 'top 50 by $ at store' : 'top 15 by $ at store');
+
   return (
     <div className="border-b border-slate-200">
-      <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200">
+      <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2 flex-wrap">
         <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
-          Missing top products by category <span className="text-slate-500 normal-case">— {active.isAll ? 'top 50 by velocity (units / month) across all categories' : 'top 15 by revenue in ' + (active.label || active.cat)} · products this store hasn\'t bought this year</span>
+          Top products by category <span className="text-slate-500 normal-case">— {headerHint} {headerSuffix}</span>
         </h3>
+        <ModeToggle />
       </div>
       <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
         <label className="text-[10px] font-mono text-slate-500 small-caps">category</label>
         <select value={active.cat} onChange={e => setActiveCat(e.target.value)}
                 className="text-[11px] py-1" style={{maxWidth: 280}}
-                title="Pick a category or Top 50 missing across all">
+                title={'Pick a category or Top 50 ' + mode + ' across all'}>
           {byCat.map(c => (
             <option key={c.cat} value={c.cat}>
               {(c.isAll ? '★ ' : '') + (c.label || c.cat) + ' (' + c.count + ')'}
@@ -743,45 +810,70 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
             clear
           </button>
         )}
-        <button onClick={downloadMissingCsv} className="btn btn-ghost text-[10px] ml-auto"
-                title="Download the missing products list for this scope as CSV">↓ CSV</button>
+        <button onClick={downloadCsv} className="btn btn-ghost text-[10px] ml-auto"
+                title={`Download the ${mode} products list for this scope as CSV`}>↓ CSV</button>
         <span className="text-[10px] font-mono text-slate-500">
-          {search
-            ? (visibleRows.length + ' match' + (visibleRows.length === 1 ? '' : 'es'))
-            : (active.isAll ? 'top 50 by velocity' : 'top 15 by revenue')}
+          {search ? (visibleRows.length + ' match' + (visibleRows.length === 1 ? '' : 'es')) : shortHint}
         </span>
       </div>
       <div className="px-5 py-3 max-h-[440px] overflow-auto">
         <table className="dt">
           <thead>
-            <tr>
-              <th className="text-right" style={{width: 36}}>#</th>
-              <th>Product</th>
-              <th>SKU Group</th>
-              <th>Brand</th>
-              <th className={`text-right ${active.isAll ? '' : 'bg-emerald-50'}`}>Global revenue</th>
-              <th className="text-right">Units</th>
-              <th className={`text-right ${active.isAll ? 'bg-emerald-50' : ''}`}>Vel / mo</th>
-            </tr>
+            {mode === 'missing' ? (
+              <tr>
+                <th className="text-right" style={{width: 36}}>#</th>
+                <th>Product</th>
+                <th>SKU Group</th>
+                <th>Brand</th>
+                <th className={`text-right ${active.isAll ? '' : 'bg-emerald-50'}`}>Global revenue</th>
+                <th className="text-right">Units</th>
+                <th className={`text-right ${active.isAll ? 'bg-emerald-50' : ''}`}>Vel / mo</th>
+              </tr>
+            ) : (
+              <tr>
+                <th className="text-right" style={{width: 36}}>#</th>
+                <th>Product</th>
+                <th>SKU Group</th>
+                <th>Brand</th>
+                <th className="text-right bg-emerald-50">$ at this store</th>
+                <th className="text-right">Store units</th>
+                <th className="text-right">Last ordered</th>
+              </tr>
+            )}
           </thead>
           <tbody>
             {visibleRows.length === 0 ? (
               <tr><td colSpan={7} className="text-center text-slate-400 py-6">
                 {search
-                  ? `No products in ${active.label || active.cat} match \"${search}\".`
-                  : `No missing products in ${active.label || active.cat}.`}
+                  ? `No products in ${active.label || active.cat} match "${search}".`
+                  : (mode === 'missing'
+                      ? `No missing products in ${active.label || active.cat}.`
+                      : `No carried products in ${active.label || active.cat}.`)}
               </td></tr>
             ) : visibleRows.map((p, i) => {
               const sg = a.skuById.get(p.sg);
+              if (mode === 'missing') {
+                return (
+                  <tr key={p.i} className="cursor-pointer" onClick={() => onPickProduct && onPickProduct(p.i)}>
+                    <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                    <td className="truncate max-w-[280px]" title={p.n}>{p.n}</td>
+                    <td className="text-slate-600 truncate max-w-[180px]" title={sg ? sg.n : ''}>{sg ? sg.n : '—'}</td>
+                    <td className="text-slate-600">{p.b || '—'}</td>
+                    <td className={`text-right tabular-nums font-mono ${active.isAll ? 'text-emerald-700' : 'text-emerald-700 font-semibold bg-emerald-50'}`}>{fmt$(p.rev)}</td>
+                    <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
+                    <td className={`text-right tabular-nums font-mono ${active.isAll ? 'text-emerald-700 font-semibold bg-emerald-50' : 'text-slate-700'}`}>{fmtNum(p.vel || 0, 0)}</td>
+                  </tr>
+                );
+              }
               return (
                 <tr key={p.i} className="cursor-pointer" onClick={() => onPickProduct && onPickProduct(p.i)}>
                   <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                   <td className="truncate max-w-[280px]" title={p.n}>{p.n}</td>
                   <td className="text-slate-600 truncate max-w-[180px]" title={sg ? sg.n : ''}>{sg ? sg.n : '—'}</td>
                   <td className="text-slate-600">{p.b || '—'}</td>
-                  <td className={`text-right tabular-nums font-mono ${active.isAll ? 'text-emerald-700' : 'text-emerald-700 font-semibold bg-emerald-50'}`}>{fmt$(p.rev)}</td>
-                  <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
-                  <td className={`text-right tabular-nums font-mono ${active.isAll ? 'text-emerald-700 font-semibold bg-emerald-50' : 'text-slate-700'}`}>{fmtNum(p.vel || 0, 0)}</td>
+                  <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold bg-emerald-50">{fmt$(p._r || 0)}</td>
+                  <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p._u || 0)}</td>
+                  <td className="text-slate-600 font-mono text-[10px] tabular-nums">{p._ts ? String(p._ts).slice(0, 10) : '—'}</td>
                 </tr>
               );
             })}
