@@ -622,13 +622,13 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
     if (!all.length) return [];
     // Top-25 chip across all categories, ranked by velocity (units/month).
     // `all` is the full velocity-sorted list (used when the search box is active).
-    const top25All = [...all].sort((x, y) => (y.vel || 0) - (x.vel || 0));
+    const top50All = [...all].sort((x, y) => (y.vel || 0) - (x.vel || 0));
     const head = {
-      cat: '__top25__',
-      label: 'Top 25 missing',
-      count: Math.min(25, all.length),
-      top: top25All.slice(0, 25),
-      all: top25All,
+      cat: '__top50__',
+      label: 'Top 50 missing',
+      count: Math.min(50, all.length),
+      top: top50All.slice(0, 50),
+      all: top50All,
       isAll: true,
     };
     const rest = [];
@@ -651,7 +651,7 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
   const active = byCat.find(c => c.cat === activeCat) || byCat[0];
 
   // Visible rows: when the search box is empty, show the curated top list
-  // (top 25 by velocity for Top 25, top 15 by revenue for a category).
+  // (top 50 by velocity for Top 50, top 15 by revenue for a category).
   // When the user is typing, search the full unsliced list and cap at 50.
   const visibleRows = (() => {
     const base = active.all || active.top;
@@ -674,14 +674,14 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
     <div className="border-b border-slate-200">
       <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200">
         <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
-          Missing top products by category <span className="text-slate-500 normal-case">— {active.isAll ? 'top 25 by velocity (units / month) across all categories' : 'top 15 by revenue in ' + (active.label || active.cat)} · products this store hasn\'t bought this year</span>
+          Missing top products by category <span className="text-slate-500 normal-case">— {active.isAll ? 'top 50 by velocity (units / month) across all categories' : 'top 15 by revenue in ' + (active.label || active.cat)} · products this store hasn\'t bought this year</span>
         </h3>
       </div>
       <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
         <label className="text-[10px] font-mono text-slate-500 small-caps">category</label>
         <select value={active.cat} onChange={e => setActiveCat(e.target.value)}
                 className="text-[11px] py-1" style={{maxWidth: 280}}
-                title="Pick a category or Top 25 missing across all">
+                title="Pick a category or Top 50 missing across all">
           {byCat.map(c => (
             <option key={c.cat} value={c.cat}>
               {(c.isAll ? '★ ' : '') + (c.label || c.cat) + ' (' + c.count + ')'}
@@ -700,7 +700,7 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
         <span className="text-[10px] font-mono text-slate-500 ml-auto">
           {search
             ? (visibleRows.length + ' match' + (visibleRows.length === 1 ? '' : 'es'))
-            : (active.isAll ? 'top 25 by velocity' : 'top 15 by revenue')}
+            : (active.isAll ? 'top 50 by velocity' : 'top 15 by revenue')}
         </span>
       </div>
       <div className="px-5 py-3 max-h-[440px] overflow-auto">
@@ -833,6 +833,46 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
   const bundleLift = bundle.reduce((s, x) => s + x.est, 0);
   const days = parseLastOrder(cl.ls, a.meta.endDate);
 
+  // Projected order — top missing individual products by velocity, with a
+  // suggested qty derived from network avg (units per store per month).
+  // Powered by a.clientProducts (the per-store-per-product carry fact).
+  const productBundle = useMemo(() => {
+    const cp = a.clientProducts;
+    if (!cp) return [];
+    const carried = cp.get(clientId) || new Map();
+    const months = a.meta.periodDays ? Math.max(1, a.meta.periodDays / 30) : 1;
+    const out = [];
+    for (const p of a.products || []) {
+      if (carried.has(p.i)) continue;
+      out.push(p);
+    }
+    out.sort((x, y) => (y.vel || 0) - (x.vel || 0));
+    return out.slice(0, 20).map(p => {
+      const avgPerStore = a.clients.length ? p.u / a.clients.length / months : 0;
+      const qty = Math.max(1, Math.ceil(avgPerStore));
+      const unitPrice = p.u > 0 ? p.rev / p.u : 0;
+      return {product: p, qty, est: qty * unitPrice};
+    });
+  }, [a, clientId]);
+  const productBundleTotal = productBundle.reduce((s, b) => s + b.est, 0);
+
+  const downloadOrderCsv = () => {
+    if (!productBundle.length) return;
+    const headers = ['Rank','Product','Brand','SKU Group','Category','Suggested Qty','Est Revenue $'];
+    const rows = productBundle.map((b, i) => [
+      i + 1,
+      b.product.n,
+      b.product.b || '',
+      (a.skuById.get(b.product.sg) || {}).n || '',
+      b.product.c || '',
+      b.qty,
+      Math.round(b.est * 100) / 100,
+    ]);
+    const slug = (cl.n || 'store').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    window.BambooExport.downloadCSV(`projected-order-${slug}-${a.meta.endDate}.csv`, headers, rows);
+  };
+
+
   const toggleBundle = (sid) => {
     const s = new Set(bundleIds);
     if (s.has(sid)) s.delete(sid); else s.add(sid);
@@ -872,7 +912,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
         <Stat l="Last order" v={cl.ls || '—'} sub={days < 999 ? `${days}d ago` : '—'} />
         <Stat l="Missing top 30" v={cl.missingTopCount} accentColor="text-rose-700" />
         <Stat l="Missed $" v={fmt$(cl.missedRev)} accentColor="text-emerald-700" />
-        <Stat l="Bundle lift (top 10)" v={fmt$(bundleLift)} accentColor="text-emerald-700" />
+        <Stat l="Projected order (top 20)" v={fmt$(productBundleTotal)} accentColor="text-emerald-700" />
         <Stat l="Tenure" v={cl.tenureDays != null ? Math.round(cl.tenureDays/365*10)/10+' yr' : '—'} />
       </div>
 
@@ -906,6 +946,8 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
           })}
         </div>
       </div>
+
+      <MissingProductsByCategory a={a} client={cl} onPickProduct={onPickProduct} />
 
       {/* Missing Top SKUs — centerpiece */}
       <div className="border-b border-slate-200">
@@ -950,23 +992,49 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
         </div>
       </div>
 
-      <MissingProductsByCategory a={a} client={cl} onPickProduct={onPickProduct} />
-
-      {/* Suggested order bundle */}
+      {/* Projected order — top missing PRODUCTS by velocity, with suggested qty */}
       <div className="border-b border-slate-200" style={{background: 'linear-gradient(135deg, rgba(16,185,129,.04), white 60%)'}}>
-        <div className="px-5 py-2.5 border-b border-slate-200">
-          <h3 className="text-[11px] uppercase tracking-wider text-emerald-800 font-semibold small-caps flex items-center gap-2">
-            Suggested order bundle
-            <span className="text-slate-400 normal-case font-normal">— top 10 missing</span>
-            <span className="ml-auto text-emerald-700 font-mono text-[12px]">potential lift {fmt$(bundleLift)}</span>
-          </h3>
+        <div className="px-5 py-2.5 border-b border-slate-200 flex items-center gap-2 flex-wrap">
+          <h3 className="text-[11px] uppercase tracking-wider text-emerald-800 font-semibold small-caps">Projected order</h3>
+          <span className="text-slate-400 normal-case font-normal text-[10px] font-mono">— top {productBundle.length} missing products by velocity · suggested qty ≈ 1 month at network avg per store</span>
+          <span className="ml-auto text-emerald-700 font-mono text-[12px]">{fmt$(productBundleTotal)}</span>
+          <button onClick={downloadOrderCsv} disabled={productBundle.length === 0}
+                  className="btn btn-ghost text-[10px]"
+                  title="Download the projected order as CSV">↓ CSV</button>
         </div>
-        <div className="px-5 py-3">
-          <pre className="text-[11px] text-slate-700 whitespace-pre-wrap font-mono leading-relaxed bg-slate-50 border border-slate-200 rounded p-3 select-all">
-{bundle.map((b,i) => `${(i+1).toString().padStart(2)}. ${b.sku.n.padEnd(38).slice(0,38)}  ${(b.suggestedUnits+'u').padStart(6)}  ~ ${fmt$(b.est).padStart(8)}`).join('\n')}
-{`\n${'─'.repeat(70)}\nTotal projected lift                           ${fmt$(bundleLift).padStart(12)}`}
-          </pre>
-        </div>
+        {productBundle.length === 0 ? (
+          <div className="px-5 py-5 text-[12px] text-slate-500">No missing products to suggest — the store carries the catalog, or per-product data isn\'t available yet.</div>
+        ) : (
+          <div className="overflow-auto" style={{maxHeight: 360}}>
+            <table className="dt">
+              <thead>
+                <tr>
+                  <th className="text-right" style={{width: 36}}>#</th>
+                  <th>Product</th>
+                  <th>Brand</th>
+                  <th>SKU Group</th>
+                  <th className="text-right">Suggested qty</th>
+                  <th className="text-right">Est revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productBundle.map((b, i) => {
+                  const sg = a.skuById.get(b.product.sg);
+                  return (
+                    <tr key={b.product.i} className="cursor-pointer" onClick={() => onPickProduct && onPickProduct(b.product.i)}>
+                      <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                      <td className="truncate max-w-[280px]" title={b.product.n}>{b.product.n}</td>
+                      <td className="text-slate-600">{b.product.b || '—'}</td>
+                      <td className="text-slate-600 truncate max-w-[180px]" title={sg ? sg.n : ''}>{sg ? sg.n : '—'}</td>
+                      <td className="text-right tabular-nums font-mono text-slate-900 font-semibold">{b.qty}</td>
+                      <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(b.est)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Category gaps */}
