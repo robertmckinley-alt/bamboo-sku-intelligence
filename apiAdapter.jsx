@@ -235,8 +235,10 @@
     // Products (filtered) — assign sg from retail-category name → perf-category new index
     const ps = api.facts.product_sales;
     const products = [];
+    const productRemap = new Map();   // old product idx -> new product idx (for client_product_sales)
     productsD.forEach((row, oldI) => {
       if (!keepProd[oldI]) return;
+      productRemap.set(oldI, products.length);
       const [id, name, bi, ci] = row;
       const retailName = retailCats[ci] ? retailCats[ci][1] : '';
       const sg = perfNameToNewIdx.has(retailName) ? perfNameToNewIdx.get(retailName) : 0;
@@ -285,7 +287,30 @@
     meta.totalUnits      = totalU;
     meta.totalMatrixRows = matrix.length;
 
-    return { meta, skus, clients, products, matrix };
+    // Client × product sales (sparse) — optional fact only present if the live API
+    // exposes it. Becomes Map<clientIdx, Set<productIdx>> of products the client has
+    // purchased this year (rev > 0). Used by the Retailer detail panel to show per-
+    // store missing products by category. Falls back to null on older API responses.
+    let clientProducts = null;
+    const cps = api.facts && api.facts.client_product_sales;
+    if (cps && Array.isArray(cps.row) && Array.isArray(cps.col)) {
+      clientProducts = new Map();
+      for (let i = 0; i < cps.row.length; i++) {
+        const rc = cps.revenue_cents ? cps.revenue_cents[i] : 0;
+        if ((rc || 0) <= 0) continue;   // only count real purchases (excludes TS samples)
+        const cNew = clientRemap.get(cps.row[i]);
+        if (cNew === undefined) continue;   // TS-only client already filtered out
+        const pNew = productRemap.get(cps.col[i]);
+        if (pNew === undefined) continue;   // TS / blocked product filtered out
+        let s = clientProducts.get(cNew);
+        if (!s) { s = new Set(); clientProducts.set(cNew, s); }
+        s.add(pNew);
+      }
+      let pairs = 0; clientProducts.forEach(s => { pairs += s.size; });
+      meta.totalClientProductPairs = pairs;
+    }
+
+    return { meta, skus, clients, products, matrix, clientProducts };
   }
 
   async function loadLiveDataset() {

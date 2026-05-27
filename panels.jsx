@@ -394,6 +394,92 @@ function Stat({l, v, sub, accent, accentColor, bar}) {
 // ============================================================
 //   RETAILER DETAIL — STORE OPPORTUNITY DRAWER (centerpiece)
 // ============================================================
+// Per-store "missing top products by category" panel — used inside RetailerDetail.
+// Reads a.clientProducts (Map<clientIdx, Set<productIdx>>) populated by apiAdapter
+// from the live API's facts.client_product_sales. Falls back silently when the
+// API hasn't exposed that fact yet.
+function MissingProductsByCategory({a, client, onPickSku}) {
+  const cp = a.clientProducts;
+
+  const byCat = useMemo(() => {
+    if (!cp || !a.products || !a.products.length) return [];
+    const carried = cp.get(client.i) || new Set();
+    const map = new Map();
+    for (const p of a.products) {
+      if (carried.has(p.i)) continue;
+      const cat = p.c || 'Other';
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat).push(p);
+    }
+    const out = [];
+    for (const [cat, items] of map) {
+      items.sort((x, y) => (y.rev || 0) - (x.rev || 0));
+      out.push({cat, count: items.length, top: items.slice(0, 15),
+                totalRev: items.reduce((s, p) => s + (p.rev || 0), 0)});
+    }
+    out.sort((x, y) => y.totalRev - x.totalRev);
+    return out;
+  }, [a, cp, client]);
+
+  const [activeCat, setActiveCat] = useState(null);
+  useEffect(() => { setActiveCat(byCat[0] ? byCat[0].cat : null); }, [byCat]);
+
+  if (!cp || !byCat.length) return null;
+  const active = byCat.find(c => c.cat === activeCat) || byCat[0];
+
+  return (
+    <div className="border-b border-slate-200">
+      <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200">
+        <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
+          Missing top products by category <span className="text-slate-500 normal-case">— click a category · top 15 by revenue · products this store hasn\'t bought this year</span>
+        </h3>
+      </div>
+      <div className="px-5 pt-3 flex flex-wrap gap-1.5">
+        {byCat.map(c => {
+          const on = c.cat === active.cat;
+          return (
+            <button key={c.cat} onClick={() => setActiveCat(c.cat)}
+                    className={`text-[11px] px-2.5 py-1 rounded transition ${on ? 'bg-slate-900 text-white shadow-sm' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}>
+              {c.cat} <span className={`font-mono ml-1 ${on ? 'text-slate-300' : 'text-slate-500'}`}>{c.count}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="px-5 py-3 max-h-[440px] overflow-auto">
+        <table className="dt">
+          <thead>
+            <tr>
+              <th className="text-right" style={{width: 36}}>#</th>
+              <th>Product</th>
+              <th>SKU Group</th>
+              <th>Brand</th>
+              <th className="text-right">Global revenue</th>
+              <th className="text-right">Units</th>
+            </tr>
+          </thead>
+          <tbody>
+            {active.top.length === 0 ? (
+              <tr><td colSpan={6} className="text-center text-slate-400 py-6">No missing products in {active.cat}.</td></tr>
+            ) : active.top.map((p, i) => {
+              const sg = a.skuById.get(p.sg);
+              return (
+                <tr key={p.i} className={sg ? 'cursor-pointer' : ''} onClick={() => sg && onPickSku && onPickSku(p.sg)}>
+                  <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                  <td className="truncate max-w-[280px]" title={p.n}>{p.n}</td>
+                  <td className="text-slate-600 truncate max-w-[180px]" title={sg ? sg.n : ''}>{sg ? sg.n : '—'}</td>
+                  <td className="text-slate-600">{p.b || '—'}</td>
+                  <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(p.rev)}</td>
+                  <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(p.u)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
   const cl = a.clients[clientId];
   const [missingSort, setMissingSort] = useState({key: 'rank', dir: 'asc'});
@@ -599,6 +685,8 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
           </table>
         </div>
       </div>
+
+      <MissingProductsByCategory a={a} client={cl} onPickSku={onPickSku} />
 
       {/* Suggested order bundle */}
       <div className="border-b border-slate-200" style={{background: 'linear-gradient(135deg, rgba(16,185,129,.04), white 60%)'}}>
