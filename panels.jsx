@@ -668,6 +668,20 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
       all: topAll,
       isAll: true,
     };
+    // Second option: same Top 50 but excluding anything in a Micro Bar SKU group.
+    const allNoMicro = all.filter(p => {
+      const sgn = (a.skuById.get(p.sg) || {}).n || '';
+      return !sgn.toLowerCase().includes('micro bar');
+    });
+    const topNoMicro = [...allNoMicro].sort(sortAll);
+    const headNoMicro = allNoMicro.length ? {
+      cat: '__topall_nomicrobar__',
+      label: (mode === 'missing' ? 'Top 50 missing' : 'Top 50 carrying') + ' (no Micro Bar)',
+      count: Math.min(50, allNoMicro.length),
+      top: topNoMicro.slice(0, 50),
+      all: topNoMicro,
+      isAll: true,
+    } : null;
     const map = new Map();
     for (const p of all) {
       const c = p.c || 'Other';
@@ -680,7 +694,7 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
       rest.push({cat, label: cat, count: items.length, top: items.slice(0, 15), all: items});
     }
     rest.sort((x, y) => (x.label || x.cat).localeCompare(y.label || y.cat));
-    return [head, ...rest];
+    return headNoMicro ? [head, headNoMicro, ...rest] : [head, ...rest];
   }, [a, cp, client, mode]);
 
   const [activeCat, setActiveCat] = useState(null);
