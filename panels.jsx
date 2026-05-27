@@ -394,11 +394,214 @@ function Stat({l, v, sub, accent, accentColor, bar}) {
 // ============================================================
 //   RETAILER DETAIL — STORE OPPORTUNITY DRAWER (centerpiece)
 // ============================================================
+// ============================================================
+//   PRODUCT DETAIL — per-store carriers / non-carriers for one individual product
+//   Powered by a.clientProducts (Map<clientIdx, Map<productIdx, {r,u,ts}>>).
+// ============================================================
+function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClient}) {
+  const product = useMemo(() => (a.products || []).find(p => p.i === productId), [a, productId]);
+  const cp = a.clientProducts;
+
+  const [repType, setRepType]     = useState((repContext && repContext.repType) || 'sr');
+  const [repFilter, setRepFilter] = useState((repContext && repContext.repFilter) || 'All');
+  const [sort, setSort]           = useState({key: 'oppScore', dir: 'desc'});
+
+  const repOptions = useMemo(() => {
+    const s = new Set();
+    for (const cl of a.clients) s.add(cl[repType] || 'Unassigned');
+    return ['All', ...[...s].sort()];
+  }, [a, repType]);
+
+  const { carriers, nonCarriers, totals } = useMemo(() => {
+    const car = [], non = [];
+    if (!product) return { carriers: car, nonCarriers: non, totals: {carriers:0, nonCarriers:0, rev:0, units:0} };
+    const inRep = (cl) => repFilter === 'All' || (cl[repType] || 'Unassigned') === repFilter;
+    for (const cl of a.clients) {
+      if (!inRep(cl)) continue;
+      const cm = cp ? cp.get(cl.i) : null;
+      const cell = cm ? cm.get(productId) : null;
+      if (cell) car.push({ cl, r: cell.r, u: cell.u, ts: cell.ts });
+      else non.push(cl);
+    }
+    return {
+      carriers: car,
+      nonCarriers: non,
+      totals: {
+        carriers: car.length,
+        nonCarriers: non.length,
+        rev: car.reduce((s, x) => s + (x.r || 0), 0),
+        units: car.reduce((s, x) => s + (x.u || 0), 0),
+      },
+    };
+  }, [a, product, cp, productId, repFilter, repType]);
+
+  const sortedNon = useMemo(() => {
+    const arr = [...nonCarriers];
+    const k = sort.key, m = sort.dir === 'asc' ? 1 : -1;
+    arr.sort((x, y) => {
+      let xv, yv;
+      if (k === 'name') { xv = x.n || ''; yv = y.n || ''; }
+      else if (k === 'days') { xv = x.daysSinceOrder ?? 9999; yv = y.daysSinceOrder ?? 9999; }
+      else { xv = x[k] || 0; yv = y[k] || 0; }
+      if (typeof xv === 'string') return xv.localeCompare(yv) * m;
+      return (xv - yv) * m;
+    });
+    return arr;
+  }, [nonCarriers, sort]);
+
+  const sortedCar = useMemo(() => [...carriers].sort((x, y) => (y.r || 0) - (x.r || 0)), [carriers]);
+
+  if (!product) {
+    return (
+      <Drawer onClose={onClose} width={1000}>
+        <div className="p-6 text-[12px] text-slate-500">Product not found.</div>
+      </Drawer>
+    );
+  }
+
+  const sg = a.skuById.get(product.sg);
+  const TH = ({k, label, align='left'}) => (
+    <th className={`sortable ${align==='right'?'text-right':'text-left'}`}
+        onClick={() => setSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}))}>
+      <span className="inline-flex items-center gap-1">{label}
+        <span className={`text-[8px] ${sort.key===k?'text-slate-700':'text-slate-300'}`}>
+          {sort.key===k ? (sort.dir==='asc'?'▲':'▼') : '▴▾'}
+        </span>
+      </span>
+    </th>
+  );
+
+  const dataMissing = !cp;
+
+  return (
+    <Drawer onClose={onClose} width={1000}>
+      <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3.5 flex items-start gap-3 z-10">
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-mono text-slate-500 small-caps mb-1">product · {product.b || 'unbranded'} · {product.c || 'Other'}</div>
+          <h2 className="font-display text-[20px] font-semibold tracking-tight leading-tight truncate" title={product.n}>{product.n}</h2>
+          {sg && (
+            <div className="text-[11px] text-slate-500 mt-1">
+              SKU group:{' '}
+              <button onClick={() => onPickSku && onPickSku(product.sg)} className="text-emerald-700 hover:underline">{sg.n}</button>
+              <span className="text-slate-400 ml-2">· global {fmt$(product.rev)} · {fmtN(product.u)}u · {fmtNum(product.vel || 0, 0)}/mo</span>
+            </div>
+          )}
+        </div>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-900 text-2xl leading-none -mt-1" aria-label="Close">×</button>
+      </div>
+
+      <div className="px-5 py-3 border-b border-slate-200 bg-slate-50 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-mono text-slate-500 small-caps">filter by</span>
+          <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+            {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
+              <button key={k} onClick={() => { setRepType(k); setRepFilter('All'); }}
+                      className={`px-2 py-0.5 rounded ${repType===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+            ))}
+          </div>
+          <select value={repFilter} onChange={e => setRepFilter(e.target.value)} className="text-[11px]" style={{maxWidth: 200}}>
+            {repOptions.map(r => <option key={r} value={r}>{r === 'All' ? (repType==='sr'?'All sales reps':'All VMI reps') : r}</option>)}
+          </select>
+        </div>
+        <span className="text-[10px] font-mono text-slate-500 ml-auto">
+          <span className="text-emerald-700 font-semibold">{totals.carriers}</span> carrying · <span className="text-rose-700 font-semibold">{totals.nonCarriers}</span> not carrying · {fmt$(totals.rev)} captured here
+        </span>
+      </div>
+
+      {dataMissing && (
+        <div className="px-5 py-2 text-[11px] bg-amber-50 border-b border-amber-200 text-amber-900">
+          Per-store product attribution isn\'t in this API response yet — every store shows as "not carrying" until <code>facts.client_product_sales</code> lights up.
+        </div>
+      )}
+
+      {/* Non-carriers — centerpiece */}
+      <div className="border-b border-slate-200">
+        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 sticky" style={{top: 0, zIndex: 6}}>
+          <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
+            Stores NOT carrying ({sortedNon.length})
+            <span className="text-slate-400 normal-case font-normal ml-2">— sorted by opportunity score · click any column</span>
+          </h3>
+        </div>
+        <div className="max-h-[420px] overflow-auto">
+          <table className="dt">
+            <thead>
+              <tr>
+                <th className="text-right" style={{width: 36}}>#</th>
+                <TH k="name" label="Store" />
+                <th>Tag</th>
+                <TH k="oppScore" label="Opp score" align="right" />
+                <TH k="rev" label="Total $" align="right" />
+                <TH k="missedRev" label="Missed $" align="right" />
+                <TH k="days" label="Last order" align="right" />
+              </tr>
+            </thead>
+            <tbody>
+              {sortedNon.length === 0 ? (
+                <tr><td colSpan={7} className="text-center text-slate-400 py-6">Every store in the filter carries this product.</td></tr>
+              ) : sortedNon.map((c, i) => {
+                const d = c.daysSinceOrder;
+                const lastTxt = d == null ? '—' : (d === 0 ? 'today' : d === 1 ? 'yesterday' : `${d}d ago`);
+                return (
+                  <tr key={c.i} onClick={() => onPickClient && onPickClient(c.i)} className="cursor-pointer">
+                    <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                    <td className="truncate max-w-[260px]" title={c.n}>{c.n}</td>
+                    <td><Tag tag={c.storeTag} /></td>
+                    <td className="text-right tabular-nums font-mono">{(c.oppScore || 0).toFixed(0)}</td>
+                    <td className="text-right tabular-nums font-mono text-slate-700">{fmt$(c.rev)}</td>
+                    <td className="text-right tabular-nums font-mono text-rose-700">{fmt$(c.missedRev || 0)}</td>
+                    <td className="text-right tabular-nums font-mono text-slate-500">{lastTxt}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Currently carrying */}
+      <div>
+        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 sticky" style={{top: 0, zIndex: 5}}>
+          <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
+            Currently carrying ({sortedCar.length})
+            <span className="text-slate-400 normal-case font-normal ml-2">— sorted by $ to this product</span>
+          </h3>
+        </div>
+        <div className="max-h-[300px] overflow-auto">
+          <table className="dt">
+            <thead>
+              <tr>
+                <th className="text-right" style={{width: 36}}>#</th>
+                <th>Store</th>
+                <th className="text-right">$ this product</th>
+                <th className="text-right">Units</th>
+                <th>Last ordered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedCar.length === 0 ? (
+                <tr><td colSpan={5} className="text-center text-slate-400 py-6">No store in the filter has bought this product yet.</td></tr>
+              ) : sortedCar.map(({cl, r, u, ts}, i) => (
+                <tr key={cl.i} onClick={() => onPickClient && onPickClient(cl.i)} className="cursor-pointer">
+                  <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
+                  <td className="truncate max-w-[260px]" title={cl.n}>{cl.n}</td>
+                  <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(r)}</td>
+                  <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(u)}</td>
+                  <td className="text-slate-600 font-mono text-[10px] tabular-nums">{ts ? String(ts).slice(0, 10) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </Drawer>
+  );
+}
+
 // Per-store "missing top products by category" panel — used inside RetailerDetail.
 // Reads a.clientProducts (Map<clientIdx, Set<productIdx>>) populated by apiAdapter
 // from the live API's facts.client_product_sales. Falls back silently when the
 // API hasn't exposed that fact yet.
-function MissingProductsByCategory({a, client, onPickSku}) {
+function MissingProductsByCategory({a, client, onPickProduct}) {
   const cp = a.clientProducts;
 
   const byCat = useMemo(() => {
@@ -463,7 +666,7 @@ function MissingProductsByCategory({a, client, onPickSku}) {
             ) : active.top.map((p, i) => {
               const sg = a.skuById.get(p.sg);
               return (
-                <tr key={p.i} className={sg ? 'cursor-pointer' : ''} onClick={() => sg && onPickSku && onPickSku(p.sg)}>
+                <tr key={p.i} className="cursor-pointer" onClick={() => onPickProduct && onPickProduct(p.i)}>
                   <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                   <td className="truncate max-w-[280px]" title={p.n}>{p.n}</td>
                   <td className="text-slate-600 truncate max-w-[180px]" title={sg ? sg.n : ''}>{sg ? sg.n : '—'}</td>
@@ -480,7 +683,7 @@ function MissingProductsByCategory({a, client, onPickSku}) {
   );
 }
 
-function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
+function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExportCallSheet}) {
   const cl = a.clients[clientId];
   const [missingSort, setMissingSort] = useState({key: 'rank', dir: 'asc'});
   const [carrySort, setCarrySort] = useState({key: 'r', dir: 'desc'});
@@ -686,7 +889,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onExportCallSheet}) {
         </div>
       </div>
 
-      <MissingProductsByCategory a={a} client={cl} onPickSku={onPickSku} />
+      <MissingProductsByCategory a={a} client={cl} onPickProduct={onPickProduct} />
 
       {/* Suggested order bundle */}
       <div className="border-b border-slate-200" style={{background: 'linear-gradient(135deg, rgba(16,185,129,.04), white 60%)'}}>
@@ -1168,4 +1371,4 @@ function Buckets({a, onPickSku}) {
   );
 }
 
-window.BambooPanels = { SkuDetail, RetailerDetail, DistributionMatrix, Buckets, Drawer };
+window.BambooPanels = { SkuDetail, RetailerDetail, DistributionMatrix, Buckets, Drawer, ProductDetail };

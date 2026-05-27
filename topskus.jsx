@@ -16,7 +16,7 @@ const { Tag, TagChips, ScoreBar } = window.BambooUI;
 // Data caveat: distribution is recorded at SKU group level, not
 // per individual product, so the non-carrier list is for the
 // product's group. We surface this in the section header.
-function TopSkusPanel({a, onPickSku}) {
+function TopSkusPanel({a, onPickProduct, onPickSku}) {
   const products = a.products || [];
 
   // High-level categories sorted by total revenue
@@ -198,15 +198,18 @@ function TopSkusPanel({a, onPickSku}) {
                   <th className="text-right" style={{width: 110}}>Share</th>
                   <Th k="u" label="Units" align="right" />
                   <Th k="vel" label="Vel / mo" align="right" hint="Units per month" />
-                  <th className="text-center" style={{width: 32}} title="Click to see stores not carrying">↗</th>
+                  <th className="text-center" style={{width: 32}} title="Click row to see stores not carrying this product">↗</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((p, i) => {
                   const groupName = a.skuById.get(p.sg)?.n || '—';
                   return (
-                    <tr key={p.i} onClick={() => onPickSku(p.sg, repFilter !== 'All' ? {repFilter, repType} : null)} className="cursor-pointer"
-                        title={`Click → open ${groupName} drawer with non-carriers list`}>
+                    <tr key={p.i} onClick={() => onPickProduct
+                          ? onPickProduct(p.i, repFilter !== 'All' ? {repFilter, repType} : null)
+                          : onPickSku && onPickSku(p.sg, repFilter !== 'All' ? {repFilter, repType} : null)
+                        } className="cursor-pointer"
+                        title={`Click → see stores not carrying ${p.n}`}>
                       <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                       <td className="truncate max-w-[280px]" title={p.n}>{p.n}</td>
                       <td className="text-slate-600">{p.b || <span className="text-slate-300">—</span>}</td>
@@ -230,7 +233,7 @@ function TopSkusPanel({a, onPickSku}) {
             </table>
           </div>
           <div className="px-4 py-2 border-t border-slate-200 bg-slate-50 text-[10px] font-mono text-slate-500 leading-relaxed">
-            <b>Note:</b> Distribution data is at SKU-group level. Clicking a row opens the drawer for that product's SKU group — the "Retailers NOT carrying" list there is your call sheet. The rep filter restricts to products whose <em>SKU group</em> is in (or, with the missing toggle, NOT in) the selected rep's book of business — product-level rep attribution isn't in the source data.
+<b>Note:</b> Clicking a row opens a per-product drawer with the exact stores not carrying that specific product. The rep filter restricts to products whose <em>SKU group</em> is in (or, with the missing toggle, not in) the selected rep's book of business — store assignments still aggregate at the SKU-group level.
           </div>
         </div>
 

@@ -287,10 +287,10 @@
     meta.totalUnits      = totalU;
     meta.totalMatrixRows = matrix.length;
 
-    // Client × product sales (sparse) — optional fact only present if the live API
-    // exposes it. Becomes Map<clientIdx, Set<productIdx>> of products the client has
-    // purchased this year (rev > 0). Used by the Retailer detail panel to show per-
-    // store missing products by category. Falls back to null on older API responses.
+    // Client × product sales (sparse). Becomes Map<clientIdx, Map<productIdx,
+    // {r, u, ts}>> with revenue, units, and last-ordered timestamp per (client,
+    // product) cell. Used by the Retailer detail panel and the ProductDetail
+    // drawer. Falls back to null when the API hasn't exposed the fact yet.
     let clientProducts = null;
     const cps = api.facts && api.facts.client_product_sales;
     if (cps && Array.isArray(cps.row) && Array.isArray(cps.col)) {
@@ -302,11 +302,15 @@
         if (cNew === undefined) continue;   // TS-only client already filtered out
         const pNew = productRemap.get(cps.col[i]);
         if (pNew === undefined) continue;   // TS / blocked product filtered out
-        let s = clientProducts.get(cNew);
-        if (!s) { s = new Set(); clientProducts.set(cNew, s); }
-        s.add(pNew);
+        let m = clientProducts.get(cNew);
+        if (!m) { m = new Map(); clientProducts.set(cNew, m); }
+        m.set(pNew, {
+          r: c2d(rc),
+          u: cps.units ? (cps.units[i] || 0) : 0,
+          ts: cps.last_ordered_at_utc ? (cps.last_ordered_at_utc[i] || null) : null,
+        });
       }
-      let pairs = 0; clientProducts.forEach(s => { pairs += s.size; });
+      let pairs = 0; clientProducts.forEach(m => { pairs += m.size; });
       meta.totalClientProductPairs = pairs;
     }
 

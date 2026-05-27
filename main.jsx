@@ -3,7 +3,7 @@ const { useState, useEffect, useMemo, useRef, useCallback } = React;
 const { buildAnalytics, DEFAULT_SKU_WEIGHTS, DEFAULT_STORE_WEIGHTS, useUrlState, fmt$, fmtN, fmtPct } = window.BambooCore;
 const { Tag, ExecStrip, WeightPanel, AppBar, Skeleton } = window.BambooUI;
 const { MasterSkuTable, RetailerTable } = window.BambooTables;
-const { SkuDetail, RetailerDetail, DistributionMatrix, Buckets } = window.BambooPanels;
+const { SkuDetail, RetailerDetail, DistributionMatrix, Buckets, ProductDetail } = window.BambooPanels;
 const { CategoryLeaderboards } = window.BambooCategories;
 const { RepsPanel } = window.BambooReps;
 const { TopSkusPanel } = window.BambooTopSkus;
@@ -53,6 +53,8 @@ function App() {
   const [pickedClient, setPickedClient] = useState(null);
   const [pickedSkuFocusClient, setPickedSkuFocusClient] = useState(null);
   const [pickedSkuRepContext, setPickedSkuRepContext] = useState(null);
+  const [pickedProduct, setPickedProduct] = useState(null);
+  const [pickedProductRepContext, setPickedProductRepContext] = useState(null);
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
 
   const analytics = useMemo(() => data ? buildAnalytics(data, skuW, storeW) : null, [data, skuW, storeW]);
@@ -65,7 +67,8 @@ function App() {
         document.getElementById('sku-search')?.focus();
       }
       if (e.key === 'Escape') {
-        if (pickedSku != null || pickedClient != null) { setPickedSku(null); setPickedClient(null); }
+        if (pickedProduct != null) { setPickedProduct(null); setPickedProductRepContext(null); }
+        else if (pickedSku != null || pickedClient != null) { setPickedSku(null); setPickedClient(null); }
         else setBulkExportOpen(false);
       }
       if (!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) {
@@ -81,7 +84,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [setTab, pickedSku, pickedClient]);
+  }, [setTab, pickedSku, pickedClient, pickedProduct]);
 
   const resetWeights = () => { setSkuW(DEFAULT_SKU_WEIGHTS); setStoreW(DEFAULT_STORE_WEIGHTS); };
 
@@ -137,6 +140,7 @@ function App() {
           {tab === 'topskus' && (
             <div className="overflow-auto h-full">
               <TopSkusPanel a={analytics}
+                onPickProduct={(pid, ctx) => { setPickedProductRepContext(ctx || null); setPickedProduct(pid); }}
                 onPickSku={(skuId, ctx) => { setPickedSkuRepContext(ctx || null); setPickedSku(skuId); }} />
             </div>
           )}
@@ -190,7 +194,16 @@ function App() {
           a={analytics} clientId={pickedClient}
           onClose={() => setPickedClient(null)}
           onPickSku={(id) => { setPickedClient(null); setPickedSku(id); }}
+          onPickProduct={(pid) => { setPickedClient(null); setPickedProduct(pid); }}
           onExportCallSheet={(ids, skuIds) => exportCallSheetPrintable(analytics, ids, skuIds)}
+        />
+      )}
+      {pickedProduct != null && (
+        <ProductDetail
+          a={analytics} productId={pickedProduct} repContext={pickedProductRepContext}
+          onClose={() => { setPickedProduct(null); setPickedProductRepContext(null); }}
+          onPickSku={(id) => { setPickedProduct(null); setPickedProductRepContext(null); setPickedSku(id); }}
+          onPickClient={(id) => { setPickedProduct(null); setPickedProductRepContext(null); setPickedClient(id); }}
         />
       )}
       {bulkExportOpen && <BulkExport a={analytics} onClose={() => setBulkExportOpen(false)} />}
