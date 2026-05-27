@@ -685,7 +685,12 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
 
   const [activeCat, setActiveCat] = useState(null);
   const [search, setSearch]       = useState('');
-  useEffect(() => { setActiveCat(byCat[0] ? byCat[0].cat : null); }, [byCat]);
+  useEffect(() => {
+    // Persist the user's category selection across mode toggles —
+    // only reset if the current selection no longer exists in the new list.
+    if (!byCat.length) { setActiveCat(null); return; }
+    if (!byCat.find(c => c.cat === activeCat)) setActiveCat(byCat[0].cat);
+  }, [byCat]);
   useEffect(() => { setSearch(''); }, [activeCat, mode]);
 
   if (!cp) return null;
