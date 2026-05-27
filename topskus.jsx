@@ -27,7 +27,7 @@ function TopSkusPanel({a, onPickProduct, onPickSku}) {
     return Object.keys(totals).sort((x, y) => totals[y] - totals[x]);
   }, [products]);
 
-  const [cat, setCat] = useState(cats[0] || 'All');
+  const [cat, setCat] = useState(cats.includes('Core Flower') ? 'Core Flower' : (cats[0] || 'All'));
   const [sort, setSort] = useState({key: 'rev', dir: 'desc'});
   const [search, setSearch] = useState('');
   const [repFilter, setRepFilter] = useState('All');
@@ -136,13 +136,26 @@ function TopSkusPanel({a, onPickProduct, onPickSku}) {
           <span className="text-[10px] font-mono text-slate-500 small-caps">{products.length} products · {cats.length} categories · click row to open non-carriers list</span>
         </div>
 
-        {/* Category chips */}
-        <TagChips
-          options={cats}
-          value={cat}
-          onChange={setCat}
-          counts={catCounts}
-        />
+        {/* Category dropdown + product search */}
+        <div className="bg-white border border-slate-200 rounded-lg px-3 py-2 flex items-center gap-2 flex-wrap">
+          <label className="text-[10px] font-mono text-slate-500 small-caps">category</label>
+          <select value={cat} onChange={e => setCat(e.target.value)}
+                  className="text-[11px] py-1" style={{maxWidth: 280}}
+                  title="Pick a category (alphabetical)">
+            {[...cats].sort().map(c => (
+              <option key={c} value={c}>{c + ' (' + (catCounts[c] || 0) + ')'}</option>
+            ))}
+          </select>
+          <input id="topskus-search" type="search" placeholder="Search product, brand, or SKU group…"
+                 value={search} onChange={e => setSearch(e.target.value)}
+                 className="text-[11px] flex-1 min-w-[220px]" />
+          {search && (
+            <button onClick={() => setSearch('')}
+                    className="text-[10px] font-mono text-slate-500 hover:text-slate-900 underline decoration-dotted">
+              clear
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
@@ -159,9 +172,6 @@ function TopSkusPanel({a, onPickProduct, onPickSku}) {
               <span className="text-[10px] font-mono text-slate-400 italic self-center">click row → non-carriers list</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <input id="topskus-search" type="search" placeholder="Search product or brand…"
-                     value={search} onChange={e => setSearch(e.target.value)}
-                     className="text-[11px] flex-1 min-w-[200px]" />
               <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
                 {[['sr','Sales'],['vr','VMI']].map(([k,l]) => (
                   <button key={k} onClick={() => setRepType(k)}
