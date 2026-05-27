@@ -620,19 +620,22 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
       all.push(p);
     }
     if (!all.length) return [];
-    // Top-25 chip across all categories, ranked by velocity (units/month)
-    const top25 = [...all].sort((x, y) => (y.vel || 0) - (x.vel || 0)).slice(0, 25);
+    // Top-25 chip across all categories, ranked by velocity (units/month).
+    // `all` is the full velocity-sorted list (used when the search box is active).
+    const top25All = [...all].sort((x, y) => (y.vel || 0) - (x.vel || 0));
     const head = {
       cat: '__top25__',
       label: 'Top 25 missing',
       count: Math.min(25, all.length),
-      top: top25,
+      top: top25All.slice(0, 25),
+      all: top25All,
       isAll: true,
     };
     const rest = [];
     for (const [cat, items] of map) {
       items.sort((x, y) => (y.rev || 0) - (x.rev || 0));
       rest.push({cat, label: cat, count: items.length, top: items.slice(0, 15),
+                 all: items,
                  totalRev: items.reduce((s, p) => s + (p.rev || 0), 0)});
     }
     rest.sort((x, y) => (x.label || x.cat).localeCompare(y.label || y.cat));
@@ -640,10 +643,32 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
   }, [a, cp, client]);
 
   const [activeCat, setActiveCat] = useState(null);
+  const [search, setSearch]       = useState('');
   useEffect(() => { setActiveCat(byCat[0] ? byCat[0].cat : null); }, [byCat]);
+  useEffect(() => { setSearch(''); }, [activeCat]);   // reset search when category changes
 
   if (!cp || !byCat.length) return null;
   const active = byCat.find(c => c.cat === activeCat) || byCat[0];
+
+  // Visible rows: when the search box is empty, show the curated top list
+  // (top 25 by velocity for Top 25, top 15 by revenue for a category).
+  // When the user is typing, search the full unsliced list and cap at 50.
+  const visibleRows = (() => {
+    const base = active.all || active.top;
+    if (!search.trim()) return active.top;
+    const q = search.toLowerCase();
+    const out = [];
+    for (const p of base) {
+      const sgn = (a.skuById.get(p.sg) || {}).n || '';
+      if ((p.n || '').toLowerCase().includes(q) ||
+          (p.b || '').toLowerCase().includes(q) ||
+          sgn.toLowerCase().includes(q)) {
+        out.push(p);
+        if (out.length >= 50) break;
+      }
+    }
+    return out;
+  })();
 
   return (
     <div className="border-b border-slate-200">
@@ -652,18 +677,31 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
           Missing top products by category <span className="text-slate-500 normal-case">— {active.isAll ? 'top 25 by velocity (units / month) across all categories' : 'top 15 by revenue in ' + (active.label || active.cat)} · products this store hasn\'t bought this year</span>
         </h3>
       </div>
-      <div className="px-5 pt-3 flex flex-wrap gap-1.5">
-        {byCat.map(c => {
-          const on = c.cat === active.cat;
-          return (
-            <button key={c.cat} onClick={() => setActiveCat(c.cat)}
-                    className={`text-[11px] px-2.5 py-1 rounded transition ${on
-                      ? (c.isAll ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-900 text-white shadow-sm')
-                      : (c.isAll ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-200')}`}>
-              {c.label || c.cat} <span className={`font-mono ml-1 ${on ? (c.isAll ? 'text-emerald-100' : 'text-slate-300') : (c.isAll ? 'text-emerald-600' : 'text-slate-500')}`}>{c.count}</span>
-            </button>
-          );
-        })}
+      <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
+        <label className="text-[10px] font-mono text-slate-500 small-caps">category</label>
+        <select value={active.cat} onChange={e => setActiveCat(e.target.value)}
+                className="text-[11px] py-1" style={{maxWidth: 280}}
+                title="Pick a category or Top 25 missing across all">
+          {byCat.map(c => (
+            <option key={c.cat} value={c.cat}>
+              {(c.isAll ? '★ ' : '') + (c.label || c.cat) + ' (' + c.count + ')'}
+            </option>
+          ))}
+        </select>
+        <input type="search" placeholder="Search product, brand, or SKU group…"
+               value={search} onChange={e => setSearch(e.target.value)}
+               className="text-[11px] flex-1 min-w-[220px]" />
+        {search && (
+          <button onClick={() => setSearch('')}
+                  className="text-[10px] font-mono text-slate-500 hover:text-slate-900 underline decoration-dotted">
+            clear
+          </button>
+        )}
+        <span className="text-[10px] font-mono text-slate-500 ml-auto">
+          {search
+            ? (visibleRows.length + ' match' + (visibleRows.length === 1 ? '' : 'es'))
+            : (active.isAll ? 'top 25 by velocity' : 'top 15 by revenue')}
+        </span>
       </div>
       <div className="px-5 py-3 max-h-[440px] overflow-auto">
         <table className="dt">
@@ -679,9 +717,13 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
             </tr>
           </thead>
           <tbody>
-            {active.top.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-slate-400 py-6">No missing products in {active.label || active.cat}.</td></tr>
-            ) : active.top.map((p, i) => {
+            {visibleRows.length === 0 ? (
+              <tr><td colSpan={7} className="text-center text-slate-400 py-6">
+                {search
+                  ? `No products in ${active.label || active.cat} match \"${search}\".`
+                  : `No missing products in ${active.label || active.cat}.`}
+              </td></tr>
+            ) : visibleRows.map((p, i) => {
               const sg = a.skuById.get(p.sg);
               return (
                 <tr key={p.i} className="cursor-pointer" onClick={() => onPickProduct && onPickProduct(p.i)}>
