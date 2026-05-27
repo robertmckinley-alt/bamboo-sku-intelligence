@@ -404,7 +404,7 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
 
   const [repType, setRepType]     = useState((repContext && repContext.repType) || 'sr');
   const [repFilter, setRepFilter] = useState((repContext && repContext.repFilter) || 'All');
-  const [sort, setSort]           = useState({key: 'oppScore', dir: 'desc'});
+  const [sort, setSort]           = useState({key: 'missedRev', dir: 'desc'});
 
   const repOptions = useMemo(() => {
     const s = new Set();
@@ -416,8 +416,10 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
     const car = [], non = [];
     if (!product) return { carriers: car, nonCarriers: non, totals: {carriers:0, nonCarriers:0, rev:0, units:0} };
     const inRep = (cl) => repFilter === 'All' || (cl[repType] || 'Unassigned') === repFilter;
+    const isClosed = (cl) => /\bclosed\b/i.test(cl.n || '');
     for (const cl of a.clients) {
       if (!inRep(cl)) continue;
+      if (isClosed(cl)) continue;   // drop CLOSED stores from both sides
       const cm = cp ? cp.get(cl.i) : null;
       const cell = cm ? cm.get(productId) : null;
       if (cell) car.push({ cl, r: cell.r, u: cell.u, ts: cell.ts });
@@ -442,6 +444,7 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
       let xv, yv;
       if (k === 'name') { xv = x.n || ''; yv = y.n || ''; }
       else if (k === 'days') { xv = x.daysSinceOrder ?? 9999; yv = y.daysSinceOrder ?? 9999; }
+      else if (k === 'rep')  { xv = x[repType] || 'Unassigned'; yv = y[repType] || 'Unassigned'; }
       else { xv = x[k] || 0; yv = y[k] || 0; }
       if (typeof xv === 'string') return xv.localeCompare(yv) * m;
       return (xv - yv) * m;
@@ -519,7 +522,7 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
         <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 sticky" style={{top: 0, zIndex: 6}}>
           <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
             Stores NOT carrying ({sortedNon.length})
-            <span className="text-slate-400 normal-case font-normal ml-2">— sorted by opportunity score · click any column</span>
+            <span className="text-slate-400 normal-case font-normal ml-2">— click any column to sort · CLOSED stores hidden</span>
           </h3>
         </div>
         <div className="max-h-[420px] overflow-auto">
@@ -529,7 +532,7 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
                 <th className="text-right" style={{width: 36}}>#</th>
                 <TH k="name" label="Store" />
                 <th>Tag</th>
-                <TH k="oppScore" label="Opp score" align="right" />
+                <TH k="rep" label={repType === 'sr' ? 'Sales Rep' : 'VMI Rep'} />
                 <TH k="rev" label="Total $" align="right" />
                 <TH k="missedRev" label="Missed $" align="right" />
                 <TH k="days" label="Last order" align="right" />
@@ -546,7 +549,7 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
                     <td className="text-right tabular-nums font-mono text-slate-500">{i + 1}</td>
                     <td className="truncate max-w-[260px]" title={c.n}>{c.n}</td>
                     <td><Tag tag={c.storeTag} /></td>
-                    <td className="text-right tabular-nums font-mono">{(c.oppScore || 0).toFixed(0)}</td>
+                    <td className="text-slate-700 truncate max-w-[140px]" title={`Sales: ${c.sr || '—'} · VMI: ${c.vr || '—'}`}>{c[repType] || '—'}</td>
                     <td className="text-right tabular-nums font-mono text-slate-700">{fmt$(c.rev)}</td>
                     <td className="text-right tabular-nums font-mono text-rose-700">{fmt$(c.missedRev || 0)}</td>
                     <td className="text-right tabular-nums font-mono text-slate-500">{lastTxt}</td>
