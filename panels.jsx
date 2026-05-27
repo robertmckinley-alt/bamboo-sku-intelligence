@@ -685,6 +685,7 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
 
   const [activeCat, setActiveCat] = useState(null);
   const [search, setSearch]       = useState('');
+  const [openSec, setOpenSec]     = useState(true);
   useEffect(() => {
     // Persist the user's category selection across mode toggles —
     // only reset if the current selection no longer exists in the new list.
@@ -793,8 +794,13 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
         <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
           Top products by category <span className="text-slate-500 normal-case">— {headerHint} {headerSuffix}</span>
         </h3>
-        <ModeToggle />
+        <div className="flex items-center gap-2">
+          <ModeToggle />
+          <button onClick={() => setOpenSec(o => !o)} className="text-slate-400 hover:text-slate-900 text-[13px] font-mono px-1 leading-none"
+                  title={openSec ? 'Collapse' : 'Expand'}>{openSec ? '▾' : '▸'}</button>
+        </div>
       </div>
+      {openSec && (<>
       <div className="px-5 pt-3 flex items-center gap-2 flex-wrap">
         <label className="text-[10px] font-mono text-slate-500 small-caps">category</label>
         <select value={active.cat} onChange={e => setActiveCat(e.target.value)}
@@ -885,6 +891,7 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
           </tbody>
         </table>
       </div>
+      </>)}
     </div>
   );
 }
@@ -894,6 +901,8 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
   const [missingSort, setMissingSort] = useState({key: 'rank', dir: 'asc'});
   const [carrySort, setCarrySort] = useState({key: 'r', dir: 'desc'});
   const [bundleIds, setBundleIds] = useState(new Set());
+  const [secOpen, setSecOpen] = useState({coverage:true, missing_skus:true, order:true, gaps:true, talking:true, carrying:true});
+  const toggleSec = (k) => setSecOpen(o => ({...o, [k]: !o[k]}));
   // Revenue rank: each SKU's position when ALL SKUs are sorted by revenue
   // (#1 = highest-revenue SKU network-wide). Drives the Missing Top SKUs order.
   const revRankById = useMemo(() => {
@@ -1068,8 +1077,10 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
           <div className="flex items-center gap-3 text-[10px] text-slate-500 font-mono">
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm" style={{background:'#0b1220'}}></span>this store</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm border border-slate-300 bg-slate-100"></span>global avg</span>
+            <button onClick={() => toggleSec('coverage')} className="text-slate-400 hover:text-slate-900 text-[13px] font-mono px-1 leading-none" title={secOpen.coverage ? 'Collapse' : 'Expand'}>{secOpen.coverage ? '▾' : '▸'}</button>
           </div>
         </div>
+        {secOpen.coverage && (
         <div className="space-y-1.5">
           {a.cats.map(c => {
             const cs = categoryGap[c];
@@ -1090,6 +1101,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
             );
           })}
         </div>
+        )}
       </div>
 
       <MissingProductsByCategory a={a} client={cl} onPickProduct={onPickProduct} />
@@ -1101,8 +1113,10 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
           <div className="flex items-center gap-2">
             {bundleIds.size > 0 && <span className="text-[11px] text-emerald-700 font-mono">{bundleIds.size} selected</span>}
             <button disabled={bundleIds.size === 0} onClick={() => onExportCallSheet([cl.i], [...bundleIds])} className="btn btn-emerald">→ Add to call sheet</button>
+            <button onClick={() => toggleSec('missing_skus')} className="text-slate-400 hover:text-slate-900 text-[13px] font-mono px-1 leading-none" title={secOpen.missing_skus ? 'Collapse' : 'Expand'}>{secOpen.missing_skus ? '▾' : '▸'}</button>
           </div>
         </div>
+        {secOpen.missing_skus && (
         <div className="max-h-[420px] overflow-auto">
           <table className="dt">
             <thead>
@@ -1135,6 +1149,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Projected order — top missing PRODUCTS by velocity, with suggested qty */}
@@ -1146,8 +1161,9 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
           <button onClick={downloadOrderCsv} disabled={productBundle.length === 0}
                   className="btn btn-ghost text-[10px]"
                   title="Download the projected order as CSV">↓ CSV</button>
+          <button onClick={() => toggleSec('order')} className="text-slate-400 hover:text-slate-900 text-[13px] font-mono px-1 leading-none" title={secOpen.order ? 'Collapse' : 'Expand'}>{secOpen.order ? '▾' : '▸'}</button>
         </div>
-        {productBundle.length === 0 ? (
+        {secOpen.order && (productBundle.length === 0 ? (
           <div className="px-5 py-5 text-[12px] text-slate-500">No missing products to suggest — the store carries the catalog, or per-product data isn\'t available yet.</div>
         ) : (
           <div className="overflow-auto" style={{maxHeight: 360}}>
@@ -1179,7 +1195,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
               </tbody>
             </table>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Category gaps */}
@@ -1190,8 +1206,10 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
               Category gaps
               <span className="text-slate-400 normal-case font-normal">— categories with zero coverage</span>
               <span className="ml-auto text-rose-700 font-mono text-[12px]">{cl.categoryGaps.length} of {cl.catCount + cl.categoryGaps.length}</span>
+              <button onClick={() => toggleSec('gaps')} className="text-slate-400 hover:text-slate-900 text-[13px] font-mono px-1 leading-none" title={secOpen.gaps ? 'Collapse' : 'Expand'}>{secOpen.gaps ? '▾' : '▸'}</button>
             </h3>
           </div>
+          {secOpen.gaps && (
           <div className="px-5 py-3 flex flex-wrap gap-1.5">
             {cl.categoryGaps.map(c => (
               <span key={c} className="pill" style={{background: 'rgba(220,38,38,.06)', color: '#991b1b', borderColor: '#fecaca'}}>
@@ -1200,6 +1218,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
               </span>
             ))}
           </div>
+          )}
         </div>
       )}
 
@@ -1209,8 +1228,10 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
           <h3 className="text-[11px] uppercase tracking-wider text-amber-800 font-semibold small-caps flex items-center gap-2">
             Talking points
             <span className="text-slate-400 normal-case font-normal">— short, data-backed sales notes</span>
+            <button onClick={() => toggleSec('talking')} className="text-slate-400 hover:text-slate-900 text-[13px] font-mono px-1 leading-none ml-auto" title={secOpen.talking ? 'Collapse' : 'Expand'}>{secOpen.talking ? '▾' : '▸'}</button>
           </h3>
         </div>
+        {secOpen.talking && (
         <div className="px-5 py-3">
           <ul className="space-y-1.5 text-[12px] text-slate-800 leading-snug">
             {(() => {
@@ -1241,14 +1262,19 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
             })()}
           </ul>
         </div>
+        )}
       </div>
 
       {/* Currently carrying */}
       <div>
         <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 flex justify-between items-center sticky" style={{top: 0, zIndex: 5}}>
           <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">Currently carrying ({sortedCarrying.length})</h3>
-          <span className="font-mono text-[11px] text-slate-700">{fmt$(cl.rev)}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[11px] text-slate-700">{fmt$(cl.rev)}</span>
+            <button onClick={() => toggleSec('carrying')} className="text-slate-400 hover:text-slate-900 text-[13px] font-mono px-1 leading-none" title={secOpen.carrying ? 'Collapse' : 'Expand'}>{secOpen.carrying ? '▾' : '▸'}</button>
+          </div>
         </div>
+        {secOpen.carrying && (
         <table className="dt">
           <thead>
             <tr>
@@ -1272,6 +1298,7 @@ function RetailerDetail({a, clientId, onClose, onPickSku, onPickProduct, onExpor
             ))}
           </tbody>
         </table>
+        )}
       </div>
     </Drawer>
   );
