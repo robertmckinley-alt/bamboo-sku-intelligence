@@ -180,6 +180,22 @@ function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, s
     return c;
   }, [a]);
 
+  const downloadCsv = () => {
+    const headers = ['Retailer','Sales Rep','VMI Rep','Tag','Opp Score','Revenue','Units','Orders','AOV','Orders/mo','SKU Groups Carried','SKU Groups Total','Penetration %','Categories','Missing Top 30','Missed $','License','Pricing Group','Last Order'];
+    const rows = sorted.map(c => [
+      c.n, c.sr || '', c.vr || '', c.storeTag || '',
+      (c.oppScore || 0).toFixed(0),
+      Math.round(c.rev || 0), c.u || 0, c.o || 0,
+      Math.round(c.aov || 0),
+      (c.orderFreq != null ? c.orderFreq.toFixed(1) : ''),
+      c.skusCarried || 0, c.skusAll || 0,
+      c.skuPenetration != null ? (c.skuPenetration * 100).toFixed(1) : '',
+      c.catCount || 0, c.missingTopCount || 0, Math.round(c.missedRev || 0),
+      c.lic || '', c.pg || '', c.ls || '',
+    ]);
+    window.BambooExport.downloadCSV(`bamboo-retailers-${a.meta.endDate}.csv`, headers, rows);
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-3 py-2 border-b border-slate-200 bg-white space-y-2">
@@ -196,6 +212,8 @@ function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, s
             {reps.map(c => <option key={c} value={c}>{c === 'All' ? (repType==='sr'?'All sales reps':'All VMI reps') : c}</option>)}
           </select>
           <span className="text-[11px] text-slate-500 font-mono tabular-nums ml-auto">{sorted.length} retailers</span>
+          <button onClick={downloadCsv} className="btn btn-ghost text-[10px]"
+                  title="Download the current retailer list (filters & sort applied) as CSV">↓ CSV</button>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Tag</span>

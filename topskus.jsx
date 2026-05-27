@@ -128,6 +128,25 @@ function TopSkusPanel({a, onPickProduct, onPickSku}) {
   const totalCatRev = catTotals[cat]?.rev || 1;
   const top25Rev = rows.reduce((s, r) => s + r.rev, 0);
 
+  const downloadCsv = () => {
+    const headers = ['Rank','Product','Brand','SKU Group','Category','Revenue','Share of Category %','Units','Velocity / mo'];
+    const rowsCsv = rows.map((p, i) => {
+      const groupName = (a.skuById.get(p.sg) || {}).n || '';
+      return [
+        i + 1, p.n, p.b || '', groupName, p.c || cat,
+        Math.round(p.rev || 0),
+        totalCatRev ? ((p.rev / totalCatRev) * 100).toFixed(2) : '',
+        p.u || 0,
+        p.vel != null ? Number(p.vel).toFixed(1) : '',
+      ];
+    });
+    const slug = (cat || 'category').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    const repTag = repFilter !== 'All'
+      ? '-' + repFilter.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + (showOnlyMissing ? '-missing' : '')
+      : '';
+    window.BambooExport.downloadCSV(`bamboo-topskus-${slug}${repTag}-${a.meta.endDate}.csv`, headers, rowsCsv);
+  };
+
   return (
     <div className="p-4 space-y-4">
       <div>
@@ -169,7 +188,11 @@ function TopSkusPanel({a, onPickProduct, onPickSku}) {
                   {fmtN(rows.length)} of {fmtN(catCounts[cat]||0)} products · shown = <b className="text-slate-700">{fmt$(top25Rev)}</b> ({fmtPct(top25Rev/totalCatRev, 0)} of {cat} revenue)
                 </div>
               </div>
-              <span className="text-[10px] font-mono text-slate-400 italic self-center">click row → non-carriers list</span>
+              <div className="self-center flex items-center gap-2">
+                <span className="text-[10px] font-mono text-slate-400 italic">click row → non-carriers list</span>
+                <button onClick={downloadCsv} className="btn btn-ghost text-[10px]"
+                        title="Download the current product list (current filters applied) as CSV">↓ CSV</button>
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">

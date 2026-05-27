@@ -454,6 +454,30 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
 
   const sortedCar = useMemo(() => [...carriers].sort((x, y) => (y.r || 0) - (x.r || 0)), [carriers]);
 
+  const slugForFiles = ((product && product.n) || 'product').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 60);
+
+  const downloadNonCarriersCsv = () => {
+    const headers = ['Rank','Store','Tag', repType === 'sr' ? 'Sales Rep' : 'VMI Rep','Sales Rep','VMI Rep','Total Revenue','Missed $','Days Since Order','Last Order'];
+    const rowsCsv = sortedNon.map((c, i) => [
+      i + 1, c.n, c.storeTag || '',
+      c[repType] || '', c.sr || '', c.vr || '',
+      Math.round(c.rev || 0), Math.round(c.missedRev || 0),
+      c.daysSinceOrder == null ? '' : c.daysSinceOrder,
+      c.ls || '',
+    ]);
+    window.BambooExport.downloadCSV(`stores-not-carrying-${slugForFiles}-${a.meta.endDate}.csv`, headers, rowsCsv);
+  };
+
+  const downloadCarriersCsv = () => {
+    const headers = ['Rank','Store','Sales Rep','VMI Rep','$ This Product','Units','Last Ordered'];
+    const rowsCsv = sortedCar.map(({cl, r, u, ts}, i) => [
+      i + 1, cl.n, cl.sr || '', cl.vr || '',
+      Math.round(r || 0), u || 0,
+      ts ? String(ts).slice(0, 10) : '',
+    ]);
+    window.BambooExport.downloadCSV(`stores-carrying-${slugForFiles}-${a.meta.endDate}.csv`, headers, rowsCsv);
+  };
+
   if (!product) {
     return (
       <Drawer onClose={onClose} width={1000}>
@@ -519,11 +543,14 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
 
       {/* Non-carriers — centerpiece */}
       <div className="border-b border-slate-200">
-        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 sticky" style={{top: 0, zIndex: 6}}>
+        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 sticky flex items-center justify-between gap-2" style={{top: 0, zIndex: 6}}>
           <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
             Stores NOT carrying ({sortedNon.length})
             <span className="text-slate-400 normal-case font-normal ml-2">— click any column to sort · CLOSED stores hidden</span>
           </h3>
+          <button onClick={downloadNonCarriersCsv} disabled={sortedNon.length === 0}
+                  className="btn btn-ghost text-[10px]"
+                  title="Download the stores-not-carrying list as CSV">↓ CSV</button>
         </div>
         <div className="max-h-[420px] overflow-auto">
           <table className="dt">
@@ -563,11 +590,14 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
 
       {/* Currently carrying */}
       <div>
-        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 sticky" style={{top: 0, zIndex: 5}}>
+        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-200 sticky flex items-center justify-between gap-2" style={{top: 0, zIndex: 5}}>
           <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps">
             Currently carrying ({sortedCar.length})
             <span className="text-slate-400 normal-case font-normal ml-2">— sorted by $ to this product</span>
           </h3>
+          <button onClick={downloadCarriersCsv} disabled={sortedCar.length === 0}
+                  className="btn btn-ghost text-[10px]"
+                  title="Download the currently-carrying list as CSV">↓ CSV</button>
         </div>
         <div className="max-h-[300px] overflow-auto">
           <table className="dt">
@@ -652,6 +682,22 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
 
   // Visible rows: when the search box is empty, show the curated top list
   // (top 50 by velocity for Top 50, top 15 by revenue for a category).
+  const downloadMissingCsv = () => {
+    const headers = ['Rank','Product','Brand','SKU Group','Category','Global Revenue','Units','Velocity / mo'];
+    const baseList = (active.all || active.top);
+    const rowsCsv = baseList.map((p, i) => {
+      const sg = a.skuById.get(p.sg);
+      return [
+        i + 1, p.n, p.b || '',
+        sg ? sg.n : '', p.c || '',
+        Math.round(p.rev || 0), p.u || 0,
+        p.vel != null ? Number(p.vel).toFixed(1) : '',
+      ];
+    });
+    const slug = (client.n || 'store').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    const scope = active.isAll ? 'top50-by-velocity' : ('category-' + (active.cat || '').replace(/[^a-z0-9]+/gi, '-').toLowerCase());
+    window.BambooExport.downloadCSV(`missing-products-${slug}-${scope}-${a.meta.endDate}.csv`, headers, rowsCsv);
+  };
   // When the user is typing, search the full unsliced list and cap at 50.
   const visibleRows = (() => {
     const base = active.all || active.top;
@@ -697,7 +743,9 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
             clear
           </button>
         )}
-        <span className="text-[10px] font-mono text-slate-500 ml-auto">
+        <button onClick={downloadMissingCsv} className="btn btn-ghost text-[10px] ml-auto"
+                title="Download the missing products list for this scope as CSV">↓ CSV</button>
+        <span className="text-[10px] font-mono text-slate-500">
           {search
             ? (visibleRows.length + ' match' + (visibleRows.length === 1 ? '' : 'es'))
             : (active.isAll ? 'top 50 by velocity' : 'top 15 by revenue')}

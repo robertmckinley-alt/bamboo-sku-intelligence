@@ -105,6 +105,20 @@ function CategoryLeaderboard({a, cat, onPickSku}) {
     </th>
   );
 
+  const downloadCsv = () => {
+    const headers = ['Rank','SKU Group','Revenue','Units','Stores','Total Stores','Penetration %','Velocity','Opportunity $'];
+    const rowsCsv = skus.map(s => [
+      s.rank, s.n,
+      Math.round(s.rev || 0), s.u || 0,
+      s.stores || 0, a.clients.length,
+      s.distPct != null ? (s.distPct * 100).toFixed(1) : '',
+      s.velocity != null ? Number(s.velocity).toFixed(1) : '',
+      Math.round(s.oppEst || 0),
+    ]);
+    const slug = (cat || 'category').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+    window.BambooExport.downloadCSV(`bamboo-category-${slug}-${a.meta.endDate}.csv`, headers, rowsCsv);
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
       <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50">
@@ -112,6 +126,8 @@ function CategoryLeaderboard({a, cat, onPickSku}) {
           <h3 className="font-display text-[16px] font-semibold tracking-tight">{cat} <span className="text-slate-400 italic">— leaderboard</span></h3>
           <div className="text-[10px] font-mono text-slate-500 small-caps">top 25 by revenue</div>
         </div>
+        <button onClick={downloadCsv} className="btn btn-ghost text-[10px]"
+                title={'Download ' + cat + ' leaderboard as CSV'}>↓ CSV</button>
       </div>
       <div className="max-h-[480px] overflow-auto">
         <table className="dt">

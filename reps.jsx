@@ -168,11 +168,35 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
       </div>
 
       <div ref={drilldownRef} />
-      {sel && repBook && (
+      {sel && repBook && (() => {
+        const downloadGroupsCsv = () => {
+          const headers = ['Rank','SKU Group','Category','Revenue','Units','Stores Carrying','Stores In Book','Rep Penetration %','Network Penetration %','Goal %','Stores To Goal'];
+          const rowsCsv = repBook.topSkus.map((row, i) => {
+            const repPenet = sel.stores ? row.stores / sel.stores : 0;
+            const goal = row.sku.distGoal;
+            const need = goal != null ? Math.max(0, Math.ceil(goal * sel.stores) - row.stores) : null;
+            return [
+              i + 1, row.sku.n, row.sku.c || '',
+              Math.round(row.rev || 0), row.u || 0,
+              row.stores || 0, sel.stores || 0,
+              (repPenet * 100).toFixed(1),
+              row.sku.distPct != null ? (row.sku.distPct * 100).toFixed(1) : '',
+              goal != null ? (goal * 100).toFixed(1) : '',
+              need == null ? '' : need,
+            ];
+          });
+          const slug = (sel.name || 'rep').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+          window.BambooExport.downloadCSV(`bamboo-${slug}-sku-groups-${a.meta.endDate}.csv`, headers, rowsCsv);
+        };
+        return (
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
-            <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— all SKU groups</span></h3>
-            <div className="text-[10px] font-mono text-slate-500 small-caps">attributed via this {repType === 'sr' ? 'sales rep' : 'VMI rep'}'s clients · click to open</div>
+          <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-baseline justify-between gap-3 flex-wrap">
+            <div>
+              <h3 className="font-display text-[16px] font-semibold tracking-tight">{sel.name} <span className="text-slate-400 italic">— all SKU groups</span></h3>
+              <div className="text-[10px] font-mono text-slate-500 small-caps">attributed via this {repType === 'sr' ? 'sales rep' : 'VMI rep'}'s clients · click to open</div>
+            </div>
+            <button onClick={downloadGroupsCsv} className="btn btn-ghost text-[10px]"
+                    title="Download this rep's SKU group list as CSV">↓ CSV</button>
           </div>
           <div className="max-h-[520px] overflow-auto">
             <table className="dt">
@@ -226,7 +250,8 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
             </table>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {sel && (() => {
         // Pull this rep's clients, sort by opp score, show as a high-priority list.
