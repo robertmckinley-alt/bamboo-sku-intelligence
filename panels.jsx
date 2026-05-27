@@ -635,7 +635,7 @@ function MissingProductsByCategory({a, client, onPickProduct}) {
       rest.push({cat, label: cat, count: items.length, top: items.slice(0, 15),
                  totalRev: items.reduce((s, p) => s + (p.rev || 0), 0)});
     }
-    rest.sort((x, y) => y.totalRev - x.totalRev);
+    rest.sort((x, y) => (x.label || x.cat).localeCompare(y.label || y.cat));
     return [head, ...rest];
   }, [a, cp, client]);
 
