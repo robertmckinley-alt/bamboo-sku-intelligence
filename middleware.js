@@ -1,7 +1,7 @@
 // Vercel Edge Middleware — simple shared-password gate with cookie TTL.
 //
 // Set SITE_PASSWORD in Vercel → Project → Settings → Environment Variables.
-// Optionally set AUTH_TTL_HOURS (default 12). Optionally set AUTH_SECRET
+// Optionally set AUTH_TTL_HOURS (default 168 = 7 days). Optionally set AUTH_SECRET
 // (defaults to SITE_PASSWORD itself, which is fine for a single-tenant tool).
 //
 // Behaviour:
@@ -18,7 +18,7 @@ export const config = {
   matcher: '/((?!_vercel|favicon\\.).*)',
 };
 
-const DEFAULT_TTL_HOURS = 12;
+const DEFAULT_TTL_HOURS = 168;   // 7 days
 
 async function hmacHex(secret, message) {
   const enc = new TextEncoder();
@@ -106,7 +106,7 @@ function loginHtml(nextUrl, errorMsg, ttlHours) {
     <input id="p" type="password" name="p" autofocus required autocomplete="current-password">
     <button type="submit">Sign in</button>
     ${err}
-    <div class="ttl">stays signed in for ${ttlHours} hour${ttlHours === 1 ? '' : 's'}</div>
+    <div class="ttl">stays signed in for ${ttlHours >= 24 && ttlHours % 24 === 0 ? (ttlHours/24) + ' day' + (ttlHours === 24 ? '' : 's') : ttlHours + ' hour' + (ttlHours === 1 ? '' : 's')}</div>
   </form>
 </body>
 </html>`;
