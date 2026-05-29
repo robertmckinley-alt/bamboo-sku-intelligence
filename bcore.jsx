@@ -65,6 +65,37 @@ function buildAnalytics(data, skuWeights, storeWeights, hideExtras) {
         !hiddenSkuIds.has(p.sg) && !isHidden(p.b) && !isHidden(p.n));
     }
     matrix = matrix.filter(m => !hiddenSkuIds.has(m.s));
+
+    // Rebuild meta totals from the filtered matrix so the exec strip and
+    // every other stat reads the post-filter numbers.
+    let _rev = 0, _u = 0;
+    for (const m of matrix) { _rev += (m.r || 0); _u += (m.u || 0); }
+    meta = {
+      ...meta,
+      totalRevenue: Math.round(_rev * 100) / 100,
+      totalUnits: _u,
+      totalMatrixRows: matrix.length,
+      totalSkus: skus.length,
+      totalProducts: products ? products.length : (meta.totalProducts || 0),
+    };
+
+    // Also rebuild the per-client clientProducts map so any reporting that
+    // counts a client's bought-product set stays consistent.
+    if (clientProducts) {
+      const droppedProducts = new Set();
+      // Build a quick lookup of surviving product indices.
+      const surviving = new Set((products || []).map(p => p.i));
+      const newCP = new Map();
+      clientProducts.forEach((pm, cIdx) => {
+        const filtered = new Map();
+        pm.forEach((cell, pIdx) => {
+          if (surviving.has(pIdx)) filtered.set(pIdx, cell);
+          else droppedProducts.add(pIdx);
+        });
+        if (filtered.size) newCP.set(cIdx, filtered);
+      });
+      clientProducts = newCP;
+    }
   }
 
   const months = meta.months;
