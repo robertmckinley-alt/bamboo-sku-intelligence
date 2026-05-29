@@ -49,6 +49,7 @@ function App() {
   const [retailerSearch, setRetailerSearch] = useUrlState('retQ', '');
   const [repFilter, setRepFilter] = useUrlState('repF', 'All');
   const [storeTagFilter, setStoreTagFilter] = useUrlState('storeT', 'All');
+  const [hideExtras, setHideExtras] = useUrlState('hide', false);
   const [pickedSku, setPickedSku] = useState(null);
   const [pickedClient, setPickedClient] = useState(null);
   const [pickedSkuFocusClient, setPickedSkuFocusClient] = useState(null);
@@ -57,7 +58,7 @@ function App() {
   const [pickedProductRepContext, setPickedProductRepContext] = useState(null);
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
 
-  const analytics = useMemo(() => data ? buildAnalytics(data, skuW, storeW) : null, [data, skuW, storeW]);
+  const analytics = useMemo(() => data ? buildAnalytics(data, skuW, storeW, hideExtras) : null, [data, skuW, storeW, hideExtras]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -111,7 +112,8 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col canvas-grain text-slate-900">
-      <AppBar tabs={TABS} tab={tab} setTab={setTab} onBulkExport={() => setBulkExportOpen(true)} />
+      <AppBar tabs={TABS} tab={tab} setTab={setTab} onBulkExport={() => setBulkExportOpen(true)}
+              hideExtras={hideExtras} setHideExtras={setHideExtras} />
       <ExecStrip a={analytics} />
 
       <div className="flex-1 flex min-h-0 main-stack">

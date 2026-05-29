@@ -43,8 +43,30 @@ function normalize(arr, getter) {
   return arr.map((x, i) => (vals[i] - min) / range);
 }
 
-function buildAnalytics(data, skuWeights, storeWeights) {
-  const { clients, skus, matrix, meta, products, penetrationGoals, categoryOverrides, clientProducts } = data;
+function buildAnalytics(data, skuWeights, storeWeights, hideExtras) {
+  let { clients, skus, matrix, meta, products, penetrationGoals, categoryOverrides, clientProducts } = data;
+
+  // Global brand exclusion (Micro Bar + Sungaze). When the AppBar toggle is on
+  // we drop those SKU groups, their products, and matching matrix cells before
+  // any downstream stat (totals, opp scores, missed $, etc.) is computed, so
+  // every report reflects the filter consistently.
+  if (hideExtras) {
+    const isHidden = (n) => {
+      const x = (n || '').toLowerCase();
+      return x.includes('micro bar') || x.includes('sungaze');
+    };
+    const hiddenSkuIds = new Set();
+    skus = skus.filter(s => {
+      if (isHidden(s.n)) { hiddenSkuIds.add(s.i); return false; }
+      return true;
+    });
+    if (products && products.length) {
+      products = products.filter(p =>
+        !hiddenSkuIds.has(p.sg) && !isHidden(p.b) && !isHidden(p.n));
+    }
+    matrix = matrix.filter(m => !hiddenSkuIds.has(m.s));
+  }
+
   const months = meta.months;
   const totalStores = clients.length;
 
