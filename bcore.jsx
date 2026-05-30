@@ -353,11 +353,20 @@ function buildAnalytics(data, skuWeights, storeWeights, hide) {
     else cl.storeTag = 'CROSS-SELL';
   }
 
+  // A retailer is "active" if they have any revenue in the filtered universe.
+  // Without any brand-hide flag this matches the full client list; with a hide
+  // flag, stores whose only business was the hidden brand drop to .active=false
+  // and stop counting in store totals, lists, and per-rep aggregations.
+  clientsEnriched.forEach(cl => { cl.active = ((cl.rev || 0) > 0); });
+  const _activeClients = clientsEnriched.filter(cl => cl.active);
+  meta = { ...meta, totalClients: _activeClients.length };
+
   return {
     skus: tradeable,
     skuById,
     skusByScore: byScore,
     clients: clientsEnriched,
+    clientsActive: _activeClients,
     byClient, bySku,
     cats: allCats,
     benchmark,

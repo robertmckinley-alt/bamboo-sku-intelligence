@@ -153,8 +153,8 @@ function ExecStrip({a}) {
         <KpiCell label="Units" value={fmtN(a.meta.totalUnits)} sub={fmtN(a.meta.totalUnits/a.meta.months)+' / mo'} accent
                  spark={<Sparkline values={sparkUnits} color="#1f2937" />} />
         <KpiCell label="Active SKUs" value={fmtN(a.skus.length)} sub={a.meta.totalSkus + ' total'} />
-        <KpiCell label="Retailers" value={fmtN(a.clients.length)} sub="across distros" />
-        <KpiCell label="Avg Rev / SKU" value={fmt$(avgRevPerSku)} sub={fmt$(a.meta.totalRevenue/a.clients.length)+' / store'} />
+        <KpiCell label="Retailers" value={fmtN(a.meta.totalClients)} sub={(a.meta.totalClients < a.clients.length ? (a.clients.length - a.meta.totalClients) + " hidden · " : "") + "across distros"} />
+        <KpiCell label="Avg Rev / SKU" value={fmt$(avgRevPerSku)} sub={fmt$(a.meta.totalRevenue/(a.meta.totalClients||1))+' / store'} />
 
         <div className="flex-1 min-w-[260px] px-4 py-2.5 hidden md:block">
           <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1 font-semibold">Top 5 SKUs <span className="text-slate-400 normal-case font-normal">by revenue</span></div>

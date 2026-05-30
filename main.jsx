@@ -295,7 +295,7 @@ function Footnote({a}) {
   return (
     <div className="border-t border-slate-200 px-3 py-3 text-[10px] text-slate-500 leading-relaxed">
       <div className="font-mono tabular-nums mb-1">
-        <b className="text-slate-700">{fmt$(a.meta.totalRevenue)}</b> · {fmtN(a.meta.totalUnits)} u · {a.skus.length} SKUs · {a.clients.length} stores
+        <b className="text-slate-700">{fmt$(a.meta.totalRevenue)}</b> · {fmtN(a.meta.totalUnits)} u · {a.skus.length} SKUs · {a.meta.totalClients} stores
       </div>
       <div>Source: Bamboo Dashboard pivot reconciled to Performance file.<br />Period {a.meta.startDate} → {a.meta.endDate}.</div>
     </div>

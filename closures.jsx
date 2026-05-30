@@ -77,6 +77,7 @@ function ClosuresPanel({a}) {
     const s = new Set();
     if (a && a.clients) {
       for (const cl of a.clients) {
+        if (cl.active === false) continue;
         const k = cl[repType] || 'Unassigned';
         if (k) s.add(k);
       }
@@ -95,6 +96,7 @@ function ClosuresPanel({a}) {
     const out = {};
     if (a && a.clients) {
       for (const cl of a.clients) {
+        if (cl.active === false) continue;
         const k = cl[repType] || 'Unassigned';
         out[k] = (out[k] || 0) + 1;
       }

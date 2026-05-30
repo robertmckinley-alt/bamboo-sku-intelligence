@@ -152,7 +152,7 @@ function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, s
   );
 
   const filtered = useMemo(() => {
-    let f = a.clients;
+    let f = a.clients.filter(c => c.active !== false);
     if (repFilter && repFilter !== 'All') f = f.filter(c => (c[repType]||'Unassigned') === repFilter);
     if (storeTagFilter && storeTagFilter !== 'All') f = f.filter(c => c.storeTag === storeTagFilter);
     if (search) {

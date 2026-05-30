@@ -49,6 +49,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
   const reps = useMemo(() => {
     const map = new Map();
     for (const cl of a.clients) {
+      if (cl.active === false) continue;
       const key = cl[repType] || 'Unassigned';
       if (!map.has(key)) {
         map.set(key, {
@@ -256,7 +257,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
       {sel && (() => {
         // Pull this rep's clients, sort by opp score, show as a high-priority list.
         const repClients = a.clients
-          .filter(c => sel.clientIds.includes(c.i))
+          .filter(c => sel.clientIds.includes(c.i) && c.active !== false)
           .slice()
           .sort((x, y) => (y.oppScore || 0) - (x.oppScore || 0));
         const callNow  = repClients.filter(c => c.storeTag === 'CALL NOW');
@@ -407,6 +408,7 @@ function MissingProductsDrawer({a, init, onClose}) {
   const repsMap = useMemo(() => {
     const m = new Map();
     for (const cl of a.clients) {
+      if (cl.active === false) continue;
       const k = cl[repType] || 'Unassigned';
       if (!m.has(k)) m.set(k, []);
       m.get(k).push(cl.i);
