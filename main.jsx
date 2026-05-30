@@ -49,7 +49,10 @@ function App() {
   const [retailerSearch, setRetailerSearch] = useUrlState('retQ', '');
   const [repFilter, setRepFilter] = useUrlState('repF', 'All');
   const [storeTagFilter, setStoreTagFilter] = useUrlState('storeT', 'All');
-  const [hideExtras, setHideExtras] = useUrlState('hide', false);
+  const [hideMB,   setHideMB]   = useUrlState('hideMB', false);
+  const [hideSG,   setHideSG]   = useUrlState('hideSG', false);
+  const [hidePICC, setHidePICC] = useUrlState('hidePICC', false);
+  const hide = useMemo(() => ({mb: hideMB, sg: hideSG, picc: hidePICC}), [hideMB, hideSG, hidePICC]);
   const [pickedSku, setPickedSku] = useState(null);
   const [pickedClient, setPickedClient] = useState(null);
   const [pickedSkuFocusClient, setPickedSkuFocusClient] = useState(null);
@@ -58,7 +61,7 @@ function App() {
   const [pickedProductRepContext, setPickedProductRepContext] = useState(null);
   const [bulkExportOpen, setBulkExportOpen] = useState(false);
 
-  const analytics = useMemo(() => data ? buildAnalytics(data, skuW, storeW, hideExtras) : null, [data, skuW, storeW, hideExtras]);
+  const analytics = useMemo(() => data ? buildAnalytics(data, skuW, storeW, hide) : null, [data, skuW, storeW, hide]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -113,7 +116,9 @@ function App() {
   return (
     <div className="h-screen flex flex-col canvas-grain text-slate-900">
       <AppBar tabs={TABS} tab={tab} setTab={setTab} onBulkExport={() => setBulkExportOpen(true)}
-              hideExtras={hideExtras} setHideExtras={setHideExtras} />
+              hideMB={hideMB} setHideMB={setHideMB}
+              hideSG={hideSG} setHideSG={setHideSG}
+              hidePICC={hidePICC} setHidePICC={setHidePICC} />
       <ExecStrip a={analytics} />
 
       <div className="flex-1 flex min-h-0 main-stack">

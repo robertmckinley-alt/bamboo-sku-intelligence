@@ -43,17 +43,22 @@ function normalize(arr, getter) {
   return arr.map((x, i) => (vals[i] - min) / range);
 }
 
-function buildAnalytics(data, skuWeights, storeWeights, hideExtras) {
+function buildAnalytics(data, skuWeights, storeWeights, hide) {
   let { clients, skus, matrix, meta, products, penetrationGoals, categoryOverrides, clientProducts } = data;
 
-  // Global brand exclusion (Micro Bar + Sungaze). When the AppBar toggle is on
-  // we drop those SKU groups, their products, and matching matrix cells before
-  // any downstream stat (totals, opp scores, missed $, etc.) is computed, so
-  // every report reflects the filter consistently.
-  if (hideExtras) {
+  // Per-brand exclusion. `hide` is an object {mb, sg, picc} — each true drops
+  // those SKU groups, their products, AND matching matrix cells before any
+  // downstream stat (totals, retailer revenue/opp scores, missed $, etc.) is
+  // computed, so every report reflects the filter consistently.
+  const _hidePatterns = [];
+  if (hide && hide.mb)   _hidePatterns.push('micro bar');
+  if (hide && hide.sg)   _hidePatterns.push('sungaze');
+  if (hide && hide.picc) _hidePatterns.push('picc');
+  if (_hidePatterns.length) {
     const isHidden = (n) => {
       const x = (n || '').toLowerCase();
-      return x.includes('micro bar') || x.includes('sungaze');
+      for (const p of _hidePatterns) { if (x.includes(p)) return true; }
+      return false;
     };
     const hiddenSkuIds = new Set();
     skus = skus.filter(s => {

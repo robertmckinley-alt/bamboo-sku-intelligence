@@ -287,7 +287,16 @@ function Skeleton() {
 }
 
 // ============== Header ==============
-function AppBar({tabs, tab, setTab, onBulkExport, hideExtras, setHideExtras}) {
+function AppBar({tabs, tab, setTab, onBulkExport, hideMB, setHideMB, hideSG, setHideSG, hidePICC, setHidePICC}) {
+  const HidePill = ({on, setOn, label}) => (
+    <button onClick={() => setOn(!on)}
+            className={`text-[10px] px-2 py-1 rounded transition border ${on
+              ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
+              : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'}`}
+            title={`Toggle: when on, ${label} is excluded from every report (SKU lists, totals, retailer revenue, opp scores, missing/projected, etc.). Setting follows you across tabs and persists in the URL.`}>
+      {on ? `\u2713 Hiding ${label}` : `Hide ${label}`}
+    </button>
+  );
   return (
     <header className="appbar flex items-center px-4 py-2.5 bg-white border-b border-slate-200 gap-3">
       <div className="flex items-center gap-2.5">
@@ -307,13 +316,9 @@ function AppBar({tabs, tab, setTab, onBulkExport, hideExtras, setHideExtras}) {
         ))}
       </nav>
       <div className="ml-auto flex items-center gap-2">
-        <button onClick={() => setHideExtras(!hideExtras)}
-                className={`text-[10px] px-2.5 py-1 rounded transition border ${hideExtras
-                  ? 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
-                  : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'}`}
-                title="Toggle: when on, Micro Bar + Sungaze are excluded from every report's stats. Setting follows you across tabs and persists in the URL.">
-          {hideExtras ? '✓ Hiding Micro Bar + Sungaze' : 'Hide Micro Bar + Sungaze'}
-        </button>
+        <HidePill on={hideMB}   setOn={setHideMB}   label="Micro Bar" />
+        <HidePill on={hideSG}   setOn={setHideSG}   label="Sungaze" />
+        <HidePill on={hidePICC} setOn={setHidePICC} label="PICC" />
         <button onClick={onBulkExport} className="btn btn-emerald">↓ Bulk Call Sheet</button>
         <span className="text-[10px] text-slate-400 font-mono hidden xl:inline">/ search · 1-5 tabs · esc close</span>
       </div>
