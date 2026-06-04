@@ -29,6 +29,7 @@ function ClosuresPanel({a}) {
 
   const [repType, setRepType] = useState('sr');       // 'sr' | 'vr'
   const [repFilter, setRepFilter] = useState('All');
+  const [typeFilter, setTypeFilter] = useState('All');   // 'All' | 'group' | 'product'
   const [range, setRange] = useState('30d');          // '7d' | '30d' | '90d' | 'mtd' | 'qtd' | 'ytd' | 'all' | 'custom'
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -42,9 +43,23 @@ function ClosuresPanel({a}) {
         // Support both array-of-objects and compact {cols, rows} form
         if (d && d.cols && d.rows) {
           const c = d.cols;
-          setClosures(d.rows.map(row => Object.fromEntries(c.map((k, i) => [k, row[i]]))));
+          const arr = d.rows.map(row => {
+            const obj = {};
+            for (let i = 0; i < c.length; i++) obj[c[i]] = row[i];
+            // Legacy rows (pre product-level): default type and skuGroup.
+            if (!obj.type) obj.type = 'group';
+            if (!obj.skuGroup) obj.skuGroup = obj.skuName || '';
+            return obj;
+          });
+          setClosures(arr);
         } else {
-          setClosures(d || []);
+          // Older array-of-objects shape; still backfill.
+          const arr = (d || []).map(o => {
+            if (!o.type) o.type = 'group';
+            if (!o.skuGroup) o.skuGroup = o.skuName || '';
+            return o;
+          });
+          setClosures(arr);
         }
       })
       .catch(e => { setError(String(e)); setClosures([]); });
@@ -110,6 +125,7 @@ function ClosuresPanel({a}) {
     if (!closures) return [];
     let arr = closures.filter(c => c.ts > MIN_CLOSURE_DATE && c.ts >= dateFrom && c.ts <= dateTo);
     if (repFilter !== 'All') arr = arr.filter(c => (c[repType] || 'Unassigned') === repFilter);
+    if (typeFilter !== 'All') arr = arr.filter(c => (c.type || 'group') === typeFilter);
     if (search) {
       const q = search.toLowerCase();
       arr = arr.filter(c =>
@@ -125,7 +141,7 @@ function ClosuresPanel({a}) {
       return ((xv ?? 0) - (yv ?? 0)) * m;
     });
     return arr;
-  }, [closures, dateFrom, dateTo, repFilter, repType, search, sort]);
+  }, [closures, dateFrom, dateTo, repFilter, repType, typeFilter, search, sort]);
 
   // Per-rep summary (within current date range)
   const repSummary = useMemo(() => {
@@ -143,13 +159,18 @@ function ClosuresPanel({a}) {
       .sort((x, y) => y.rev - x.rev);
   }, [closures, dateFrom, dateTo, repType]);
 
-  // Aggregate totals
+  // Aggregate totals — split count by closure type so the rep can see how
+  // many wins were brand-new SKU groups vs expansions within an existing one.
   const totals = useMemo(() => {
     const rev = filtered.reduce((s, c) => s + (c.rev || 0), 0);
     const units = filtered.reduce((s, c) => s + (c.units || 0), 0);
     const stores = new Set(filtered.map(c => c.clientName)).size;
     const skus = new Set(filtered.map(c => c.skuName)).size;
-    return {count: filtered.length, rev, units, stores, skus};
+    let groupCount = 0, productCount = 0;
+    for (const c of filtered) {
+      if ((c.type || 'group') === 'product') productCount += 1; else groupCount += 1;
+    }
+    return {count: filtered.length, rev, units, stores, skus, groupCount, productCount};
   }, [filtered]);
 
   const click = (k) => setSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}));
@@ -160,14 +181,16 @@ function ClosuresPanel({a}) {
   );
 
   const exportCsv = () => {
-    const rows = [['Date','Store','SKU Group','Category','Revenue','Units','Sales Rep','VMI Rep'].join(',')];
+    const rows = [['Date','Store','Type','SKU / Product','Parent SKU Group','Category','Revenue','Units','Sales Rep','VMI Rep'].join(',')];
     for (const c of filtered) {
       const esc = (v) => {
         if (v == null) return '';
         const s = String(v);
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
       };
-      rows.push([c.ts, c.clientName, c.skuName, c.category, c.rev, c.units, c.sr, c.vr].map(esc).join(','));
+      const t = c.type || 'group';
+      const grp = c.skuGroup || (t === 'group' ? c.skuName : '');
+      rows.push([c.ts, c.clientName, t, c.skuName, grp, c.category, c.rev, c.units, c.sr, c.vr].map(esc).join(','));
     }
     const blob = new Blob([rows.join('\n')], {type: 'text/csv;charset=utf-8'});
     const url = URL.createObjectURL(blob);
@@ -239,6 +262,17 @@ function ClosuresPanel({a}) {
                    value={search} onChange={e => setSearch(e.target.value)}
                    className="text-[11px] flex-1 min-w-[200px]" />
           </div>
+
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Type</span>
+            <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
+              {[['All','All'],['group','Group'],['product','Product']].map(([k,l]) => (
+                <button key={k} onClick={() => setTypeFilter(k)}
+                        className={`px-2 py-0.5 rounded ${typeFilter===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
+              ))}
+            </div>
+            <span className="text-[10px] font-mono text-slate-400">group = first order in a SKU group · product = new product in an existing group</span>
+          </div>
         </div>
       </div>
 
@@ -247,6 +281,7 @@ function ClosuresPanel({a}) {
         <div className="bg-white border border-slate-200 rounded-lg px-4 py-3">
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Closures</div>
           <div className="font-mono tabular-nums text-[18px] font-semibold text-slate-900 mt-0.5">{fmtN(totals.count)}</div>
+          <div className="text-[10px] font-mono text-slate-500 mt-0.5"><span className="text-emerald-700">{fmtN(totals.groupCount)} group</span> · <span className="text-amber-700">{fmtN(totals.productCount)} product</span></div>
         </div>
         <div className="bg-white border border-slate-200 rounded-lg px-4 py-3">
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Revenue Captured</div>
@@ -291,7 +326,8 @@ function ClosuresPanel({a}) {
                   <tr>
                     <Th k="ts" label="Date" />
                     <Th k="clientName" label="Store" />
-                    <Th k="skuName" label="SKU Group" />
+                    <Th k="type" label="Type" />
+                    <Th k="skuName" label="SKU / Product" />
                     <Th k="category" label="Category" />
                     <Th k="rev" label="Revenue" align="right" />
                     <Th k="units" label="Units" align="right" />
@@ -300,18 +336,36 @@ function ClosuresPanel({a}) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c, i) => (
-                    <tr key={i}>
-                      <td className="font-mono tabular-nums text-[10px] text-slate-600">{c.ts}</td>
-                      <td className="truncate max-w-[220px]" title={c.clientName}>{c.clientName}</td>
-                      <td className="truncate max-w-[200px]" title={c.skuName}>{c.skuName}</td>
-                      <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{c.category}</span></td>
-                      <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(c.rev)}</td>
-                      <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(c.units)}</td>
-                      <td className="truncate max-w-[140px] text-slate-700">{c.sr}</td>
-                      <td className="truncate max-w-[140px] text-slate-700">{c.vr}</td>
-                    </tr>
-                  ))}
+                  {filtered.map((c, i) => {
+                    const t = c.type || 'group';
+                    const isProd = t === 'product';
+                    return (
+                      <tr key={i}>
+                        <td className="font-mono tabular-nums text-[10px] text-slate-600">{c.ts}</td>
+                        <td className="truncate max-w-[200px]" title={c.clientName}>{c.clientName}</td>
+                        <td>
+                          <span className="pill" style={{
+                            background: isProd ? 'rgba(245,158,11,.10)' : 'rgba(5,150,105,.10)',
+                            color: isProd ? '#92400e' : '#065f46',
+                            borderColor: isProd ? '#fde68a' : '#a7f3d0'}}
+                            title={isProd ? 'New product in a SKU group this store already carried' : 'First order in a brand-new SKU group for this store'}>
+                            {isProd ? 'product' : 'group'}
+                          </span>
+                        </td>
+                        <td className="max-w-[240px]">
+                          <div className="truncate" title={c.skuName}>{c.skuName}</div>
+                          {isProd && c.skuGroup ? (
+                            <div className="text-[10px] text-slate-500 font-mono truncate" title={'parent: ' + c.skuGroup}>↳ {c.skuGroup}</div>
+                          ) : null}
+                        </td>
+                        <td><span className="pill" style={{background: 'rgba(11,18,32,.04)', color: '#374151', borderColor: '#e5e7eb'}}>{c.category}</span></td>
+                        <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(c.rev)}</td>
+                        <td className="text-right tabular-nums font-mono text-slate-700">{fmtN(c.units)}</td>
+                        <td className="truncate max-w-[140px] text-slate-700">{c.sr}</td>
+                        <td className="truncate max-w-[140px] text-slate-700">{c.vr}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
