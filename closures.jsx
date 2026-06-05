@@ -22,6 +22,7 @@ const { Tag } = window.BambooUI;
 // This tab loads closures.json, filters by date range / rep /
 // search, and exports CSV for reporting up the chain.
 const MIN_CLOSURE_DATE = '2026-05-02';  // exclusive — closures dated 5/3 or later are true post-baseline voids
+const DATA_START      = '2026-05-03';  // inclusive — earliest day our tracker has reliable data
 
 function ClosuresPanel({a, hide}) {
   const [closures, setClosures] = useState(null);
@@ -100,24 +101,30 @@ function ClosuresPanel({a, hide}) {
     });
   }, [closures, hide]);
 
-  // Resolve the active date range to [from, to] inclusive
-  const [dateFrom, dateTo] = useMemo(() => {
+  // Resolve the active date range to [from, to] inclusive. The lower bound is
+  // clamped to DATA_START so the longer chips (90d, QTD, YTD, All) silently
+  // shrink to 'everything we have' until our coverage actually reaches that far.
+  // rangeInfo.clamped is true when the requested range was wider than the data
+  // (used to surface a 'data starts 5/3' hint in the UI).
+  const {dateFrom, dateTo, rangeInfo} = useMemo(() => {
     const today = new Date();
     const toIso = today.toISOString().slice(0, 10);
     const days = (n) => { const d = new Date(today); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
-    if (range === 'all')    return ['0000-01-01', '9999-12-31'];
-    if (range === '7d')     return [days(7), toIso];
-    if (range === '30d')    return [days(30), toIso];
-    if (range === '90d')    return [days(90), toIso];
-    if (range === 'mtd')    return [today.toISOString().slice(0,8)+'01', toIso];
-    if (range === 'qtd') {
-      const q = Math.floor(today.getMonth() / 3) * 3;
-      const start = new Date(today.getFullYear(), q, 1);
-      return [start.toISOString().slice(0, 10), toIso];
-    }
-    if (range === 'ytd')    return [today.getFullYear() + '-01-01', toIso];
-    if (range === 'custom') return [customFrom || '0000-01-01', customTo || '9999-12-31'];
-    return ['0000-01-01', '9999-12-31'];
+    let requestedFrom = DATA_START;
+    let to = toIso;
+    let label = range;
+    if      (range === 'all')    requestedFrom = '0000-01-01';
+    else if (range === '7d')     requestedFrom = days(7);
+    else if (range === '30d')    requestedFrom = days(30);
+    else if (range === '90d')    requestedFrom = days(90);
+    else if (range === 'mtd')    requestedFrom = today.toISOString().slice(0,8)+'01';
+    else if (range === 'qtd')    { const q = Math.floor(today.getMonth()/3)*3; requestedFrom = new Date(today.getFullYear(), q, 1).toISOString().slice(0,10); }
+    else if (range === 'ytd')    requestedFrom = today.getFullYear()+'-01-01';
+    else if (range === 'custom') { requestedFrom = customFrom || DATA_START; to = customTo || toIso; }
+    // Clamp: longer windows fall back to whatever data we actually have.
+    const effectiveFrom = (requestedFrom < DATA_START) ? DATA_START : requestedFrom;
+    const clamped = (effectiveFrom !== requestedFrom);
+    return {dateFrom: effectiveFrom, dateTo: to, rangeInfo: {requestedFrom, clamped, label}};
   }, [range, customFrom, customTo]);
 
   // Build the rep dropdown from the LIVE analytics roster (all reps, even those
@@ -280,6 +287,9 @@ function ClosuresPanel({a, hide}) {
               </span>
             )}
             <span className="text-[10px] font-mono text-slate-400 ml-2">{dateFrom} → {dateTo}</span>
+            {rangeInfo.clamped && (
+              <span className="text-[10px] font-mono text-amber-700 ml-2" title="The selected range is wider than the data we have. Showing everything since 5/3 — the same data you'd see on the All chip until tracking catches up.">data only since {DATA_START}</span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
