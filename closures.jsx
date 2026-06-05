@@ -48,7 +48,7 @@ function ClosuresPanel({a, hide}) {
     for (const p of hidePatterns) { if (n.indexOf(p) >= 0 || g.indexOf(p) >= 0) return true; }
     return false;
   };
-  const [range, setRange] = useState('30d');          // '7d' | '30d' | '90d' | 'mtd' | 'qtd' | 'ytd' | 'all' | 'custom'
+  const [range, setRange] = useState('thisweek');     // 'thisweek' | 'lastweek' | '30d' | '90d' | 'mtd' | 'qtd' | 'ytd' | 'all' | 'custom'
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
   const [search, setSearch] = useState('');
@@ -126,9 +126,26 @@ function ClosuresPanel({a, hide}) {
     let requestedFrom = dataStart;
     let to = toIso;
     let label = range;
-    if      (range === 'all')    requestedFrom = '0000-01-01';
-    else if (range === '7d')     requestedFrom = days(7);
-    else if (range === '30d')    requestedFrom = days(30);
+    // Week-bounds helper: Monday->Sunday in UTC so week math doesn't drift
+    // across DST. Returns [mondayISO, sundayISO].
+    const weekBounds = (refDate) => {
+      const d = new Date(Date.UTC(refDate.getUTCFullYear(), refDate.getUTCMonth(), refDate.getUTCDate()));
+      const dow = d.getUTCDay();                   // 0=Sun .. 6=Sat
+      const offsetToMon = (dow === 0) ? -6 : (1 - dow);
+      d.setUTCDate(d.getUTCDate() + offsetToMon);
+      const start = d.toISOString().slice(0, 10);
+      const end = new Date(d); end.setUTCDate(end.getUTCDate() + 6);
+      return [start, end.toISOString().slice(0, 10)];
+    };
+    if      (range === 'all')      requestedFrom = '0000-01-01';
+    else if (range === 'thisweek') { const [m,_su] = weekBounds(today); requestedFrom = m; /* to stays today */ }
+    else if (range === 'lastweek') { const [m,_su] = weekBounds(today);
+                                     const prevMon = new Date(m + 'T00:00:00Z'); prevMon.setUTCDate(prevMon.getUTCDate() - 7);
+                                     const prevSun = new Date(prevMon); prevSun.setUTCDate(prevSun.getUTCDate() + 6);
+                                     requestedFrom = prevMon.toISOString().slice(0,10);
+                                     to = prevSun.toISOString().slice(0,10); }
+    else if (range === '7d')       requestedFrom = days(7);
+    else if (range === '30d')      requestedFrom = days(30);
     else if (range === '90d')    requestedFrom = days(90);
     else if (range === 'mtd')    requestedFrom = today.toISOString().slice(0,8)+'01';
     else if (range === 'qtd')    { const q = Math.floor(today.getMonth()/3)*3; requestedFrom = new Date(today.getFullYear(), q, 1).toISOString().slice(0,10); }
@@ -290,7 +307,7 @@ function ClosuresPanel({a, hide}) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Range</span>
             <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
-              {[['7d','7d'],['30d','30d'],['90d','90d'],['mtd','MTD'],['qtd','QTD'],['ytd','YTD'],['all','All'],['custom','Custom']].map(([k,l]) => (
+              {[['thisweek','This Week'],['lastweek','Last Week'],['30d','30d'],['90d','90d'],['mtd','MTD'],['qtd','QTD'],['ytd','YTD'],['all','All'],['custom','Custom']].map(([k,l]) => (
                 <button key={k} onClick={() => setRange(k)}
                         className={`px-2 py-0.5 rounded ${range===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
               ))}
