@@ -106,11 +106,24 @@ function ClosuresPanel({a, hide}) {
   // shrink to 'everything we have' until our coverage actually reaches that far.
   // rangeInfo.clamped is true when the requested range was wider than the data
   // (used to surface a 'data starts 5/3' hint in the UI).
+  // Earliest day we actually have closure data for. Dynamic — uses the min
+  // ts in the loaded closures, fenced to the conceptual baseline (5/3). The
+  // 5/3 rebuild dated all pre-baseline events to a 5/13 sentinel, so this
+  // resolves to 5/13 today and grows backward only if older data lands.
+  const dataStart = useMemo(() => {
+    if (!closures || !closures.length) return DATA_START;
+    let m = '9999-12-31';
+    for (const c of closures) {
+      if (c.ts && c.ts > MIN_CLOSURE_DATE && c.ts < m) m = c.ts;
+    }
+    return (m < DATA_START) ? m : (m === '9999-12-31' ? DATA_START : m);
+  }, [closures]);
+
   const {dateFrom, dateTo, rangeInfo} = useMemo(() => {
     const today = new Date();
     const toIso = today.toISOString().slice(0, 10);
     const days = (n) => { const d = new Date(today); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
-    let requestedFrom = DATA_START;
+    let requestedFrom = dataStart;
     let to = toIso;
     let label = range;
     if      (range === 'all')    requestedFrom = '0000-01-01';
@@ -120,12 +133,15 @@ function ClosuresPanel({a, hide}) {
     else if (range === 'mtd')    requestedFrom = today.toISOString().slice(0,8)+'01';
     else if (range === 'qtd')    { const q = Math.floor(today.getMonth()/3)*3; requestedFrom = new Date(today.getFullYear(), q, 1).toISOString().slice(0,10); }
     else if (range === 'ytd')    requestedFrom = today.getFullYear()+'-01-01';
-    else if (range === 'custom') { requestedFrom = customFrom || DATA_START; to = customTo || toIso; }
-    // Clamp: longer windows fall back to whatever data we actually have.
-    const effectiveFrom = (requestedFrom < DATA_START) ? DATA_START : requestedFrom;
+    else if (range === 'custom') { requestedFrom = customFrom || dataStart; to = customTo || toIso; }
+    // Clamp every chip's lower bound to where data actually begins. Today the
+    // 30d chip (5/6) clamps to 5/13 since pre-5/13 events were folded into a
+    // sentinel during the 5/3 rebuild. As real days accrue, 30d will catch up
+    // first, then 90d, etc.
+    const effectiveFrom = (requestedFrom < dataStart) ? dataStart : requestedFrom;
     const clamped = (effectiveFrom !== requestedFrom);
     return {dateFrom: effectiveFrom, dateTo: to, rangeInfo: {requestedFrom, clamped, label}};
-  }, [range, customFrom, customTo]);
+  }, [range, customFrom, customTo, dataStart]);
 
   // Build the rep dropdown from the LIVE analytics roster (all reps, even those
   // with no closures yet) PLUS any names that show up in historical closures
@@ -288,7 +304,7 @@ function ClosuresPanel({a, hide}) {
             )}
             <span className="text-[10px] font-mono text-slate-400 ml-2">{dateFrom} → {dateTo}</span>
             {rangeInfo.clamped && (
-              <span className="text-[10px] font-mono text-amber-700 ml-2" title="The selected range is wider than the data we have. Showing everything since 5/3 — the same data you'd see on the All chip until tracking catches up.">data only since {DATA_START}</span>
+              <span className="text-[10px] font-mono text-amber-700 ml-2" title={"The selected range is wider than the data we have. Showing everything since " + dataStart + " — the same data you'd see on the All chip until tracking catches up."}>data only since {dataStart}</span>
             )}
           </div>
 
@@ -367,7 +383,7 @@ function ClosuresPanel({a, hide}) {
               <h3 className="text-[11px] uppercase tracking-wider text-slate-700 font-semibold small-caps flex items-center gap-2">
                 Closure log
                 <span className="text-slate-400 normal-case font-normal">— click column to sort</span>
-                <span className="ml-auto font-mono text-slate-700">{filtered.length} rows</span>
+                <span className="ml-auto font-mono text-slate-700">{filtered.length > 1500 ? 'showing first 1,500 of ' + fmtN(filtered.length) + ' — export CSV for full set' : fmtN(filtered.length) + ' rows'}</span>
               </h3>
             </div>
             <div className="overflow-auto" style={{maxHeight: '70vh'}}>
@@ -386,7 +402,7 @@ function ClosuresPanel({a, hide}) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((c, i) => {
+                  {filtered.slice(0, 1500).map((c, i) => {
                     const t = c.type || 'group';
                     const isProd = t === 'product';
                     return (
