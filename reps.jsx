@@ -51,6 +51,7 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
     for (const cl of a.clients) {
       if (cl.active === false) continue;
       const key = cl[repType] || 'Unassigned';
+      if (repType === 'vr' && key === 'Unassigned') continue;   // VMI cards only Josh/Koen/Curtis
       if (!map.has(key)) {
         map.set(key, {
           name: key, stores: 0, revenue: 0, units: 0, orders: 0,

@@ -408,7 +408,7 @@ function ProductDetail({a, productId, repContext, onClose, onPickSku, onPickClie
 
   const repOptions = useMemo(() => {
     const s = new Set();
-    for (const cl of a.clients) s.add(cl[repType] || 'Unassigned');
+    for (const cl of a.clients) { const k = cl[repType] || 'Unassigned'; if (repType === 'vr' && k === 'Unassigned') continue; s.add(k); }
     return ['All', ...[...s].sort()];
   }, [a, repType]);
 
@@ -1432,7 +1432,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
   const totalH = skus.length * cellH;
 
   const cats = ['All', ...[...new Set(a.skus.map(s => s.c))].sort()];
-  const reps = useMemo(() => ['All', ...[...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].sort()], [a, repType]);
+  const reps = useMemo(() => ['All', ...[...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].filter(r => !(repType === 'vr' && r === 'Unassigned')).sort()], [a, repType]);
 
   const onCellEnter = useCallback((sx, cx, ev) => {
     // Avoid re-firing if we're already showing this exact cell

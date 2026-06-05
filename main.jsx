@@ -310,7 +310,7 @@ function BulkExport({a, onClose}) {
   const [storeTag, setStoreTag] = useState('CALL NOW');
   const [selected, setSelected] = useState(new Set());
   const reps = useMemo(
-    () => [...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].sort(),
+    () => [...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].filter(r => !(repType === 'vr' && r === 'Unassigned')).sort(),
     [a, repType]
   );
   // Reset rep when type flips so we don't carry a stale name

@@ -147,7 +147,7 @@ function RetailerTable({a, onPick, search, setSearch, repFilter, setRepFilter, s
   const [sort, setSort] = useState({key:'rev', dir:'desc'});
   const [repType, setRepType] = useState('sr'); // 'sr' = Sales Rep, 'vr' = VMI Rep
   const reps = useMemo(
-    () => ['All', ...[...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].sort()],
+    () => ['All', ...[...new Set(a.clients.map(c => c[repType] || 'Unassigned'))].filter(r => !(repType === 'vr' && r === 'Unassigned')).sort()],
     [a, repType]
   );
 

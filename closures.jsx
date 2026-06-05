@@ -174,17 +174,20 @@ function ClosuresPanel({a, hide}) {
   // (covering reps who left but have past attribution).
   const repOptions = useMemo(() => {
     const s = new Set();
+    const skipUnassigned = (k) => (repType === 'vr' && k === 'Unassigned');
     if (a && a.clients) {
       for (const cl of a.clients) {
         if (cl.active === false) continue;
         const k = cl[repType] || 'Unassigned';
-        if (k) s.add(k);
+        if (!k || skipUnassigned(k)) continue;
+        s.add(k);
       }
     }
     if (closuresVisible) {
       for (const c of closuresVisible) {
         const k = c[repType] || 'Unassigned';
-        if (k) s.add(k);
+        if (!k || skipUnassigned(k)) continue;
+        s.add(k);
       }
     }
     return ['All', ...[...s].sort()];
