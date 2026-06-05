@@ -200,12 +200,16 @@ function ClosuresPanel({a, hide}) {
     const rev = filtered.reduce((s, c) => s + (c.rev || 0), 0);
     const units = filtered.reduce((s, c) => s + (c.units || 0), 0);
     const stores = new Set(filtered.map(c => c.clientName)).size;
-    const skus = new Set(filtered.map(c => c.skuName)).size;
+    // SKU groups: distinct parent group names (group rows use skuName; product rows
+    // use skuGroup). This is the real ~82 SKU-group universe, not 1,000+ product names.
+    const groups = new Set(filtered.map(c => (c.type || "group") === "product" ? (c.skuGroup || "") : (c.skuName || ""))).size;
+    // Products: distinct individual products won (only meaningful on type=product rows).
+    const products = new Set(filtered.filter(c => (c.type || "group") === "product").map(c => c.skuName || "")).size;
     let groupCount = 0, productCount = 0;
     for (const c of filtered) {
-      if ((c.type || 'group') === 'product') productCount += 1; else groupCount += 1;
+      if ((c.type || "group") === "product") productCount += 1; else groupCount += 1;
     }
-    return {count: filtered.length, rev, units, stores, skus, groupCount, productCount};
+    return {count: filtered.length, rev, units, stores, groups, products, groupCount, productCount};
   }, [filtered]);
 
   const click = (k) => setSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}));
@@ -332,7 +336,8 @@ function ClosuresPanel({a, hide}) {
         </div>
         <div className="bg-white border border-slate-200 rounded-lg px-4 py-3">
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Unique SKU Groups</div>
-          <div className="font-mono tabular-nums text-[18px] font-semibold text-slate-900 mt-0.5">{fmtN(totals.skus)}</div>
+          <div className="font-mono tabular-nums text-[18px] font-semibold text-slate-900 mt-0.5">{fmtN(totals.groups)}</div>
+          <div className="text-[10px] font-mono text-slate-500 mt-0.5">{fmtN(totals.products)} unique products</div>
         </div>
       </div>
 
