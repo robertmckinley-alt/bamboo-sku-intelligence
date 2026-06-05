@@ -23,7 +23,7 @@ const { Tag } = window.BambooUI;
 // search, and exports CSV for reporting up the chain.
 const MIN_CLOSURE_DATE = '2026-05-02';  // exclusive — closures dated 5/3 or later are true post-baseline voids
 
-function ClosuresPanel({a}) {
+function ClosuresPanel({a, hide}) {
   const [closures, setClosures] = useState(null);
   const [error, setError] = useState(null);
 
@@ -65,6 +65,24 @@ function ClosuresPanel({a}) {
       .catch(e => { setError(String(e)); setClosures([]); });
   }, []);
 
+  // Apply the AppBar brand-hide pills (Micro Bar / Sungaze / PICC) to closures
+  // BEFORE any downstream count or filter runs — so the KPI, rep summary,
+  // rep dropdown, and table all reflect whichever pills are on.
+  const closuresVisible = useMemo(() => {
+    if (!closures) return null;
+    const patterns = [];
+    if (hide && hide.mb)   patterns.push('micro bar');
+    if (hide && hide.sg)   patterns.push('sungaze');
+    if (hide && hide.picc) patterns.push('picc');
+    if (!patterns.length) return closures;
+    return closures.filter(c => {
+      const n1 = (c.skuName || '').toLowerCase();
+      const n2 = (c.skuGroup || '').toLowerCase();
+      for (const p of patterns) { if (n1.includes(p) || n2.includes(p)) return false; }
+      return true;
+    });
+  }, [closures, hide]);
+
   // Resolve the active date range to [from, to] inclusive
   const [dateFrom, dateTo] = useMemo(() => {
     const today = new Date();
@@ -97,8 +115,8 @@ function ClosuresPanel({a}) {
         if (k) s.add(k);
       }
     }
-    if (closures) {
-      for (const c of closures) {
+    if (closuresVisible) {
+      for (const c of closuresVisible) {
         const k = c[repType] || 'Unassigned';
         if (k) s.add(k);
       }
@@ -122,8 +140,8 @@ function ClosuresPanel({a}) {
   React.useEffect(() => { setRepFilter('All'); }, [repType]);
 
   const filtered = useMemo(() => {
-    if (!closures) return [];
-    let arr = closures.filter(c => c.ts > MIN_CLOSURE_DATE && c.ts >= dateFrom && c.ts <= dateTo);
+    if (!closuresVisible) return [];
+    let arr = closuresVisible.filter(c => c.ts > MIN_CLOSURE_DATE && c.ts >= dateFrom && c.ts <= dateTo);
     if (repFilter !== 'All') arr = arr.filter(c => (c[repType] || 'Unassigned') === repFilter);
     if (typeFilter !== 'All') arr = arr.filter(c => (c.type || 'group') === typeFilter);
     if (search) {
@@ -141,12 +159,12 @@ function ClosuresPanel({a}) {
       return ((xv ?? 0) - (yv ?? 0)) * m;
     });
     return arr;
-  }, [closures, dateFrom, dateTo, repFilter, repType, typeFilter, search, sort]);
+  }, [closuresVisible, dateFrom, dateTo, repFilter, repType, typeFilter, search, sort]);
 
   // Per-rep summary (within current date range)
   const repSummary = useMemo(() => {
-    if (!closures) return [];
-    const inRange = closures.filter(c => c.ts > MIN_CLOSURE_DATE && c.ts >= dateFrom && c.ts <= dateTo);
+    if (!closuresVisible) return [];
+    const inRange = closuresVisible.filter(c => c.ts > MIN_CLOSURE_DATE && c.ts >= dateFrom && c.ts <= dateTo);
     const map = new Map();
     for (const c of inRange) {
       const k = c[repType] || 'Unassigned';
@@ -157,7 +175,7 @@ function ClosuresPanel({a}) {
     }
     return [...map.values()].map(r => ({...r, stores: r.stores.size, skus: r.skus.size}))
       .sort((x, y) => y.rev - x.rev);
-  }, [closures, dateFrom, dateTo, repType]);
+  }, [closuresVisible, dateFrom, dateTo, repType]);
 
   // Aggregate totals — split count by closure type so the rep can see how
   // many wins were brand-new SKU groups vs expansions within an existing one.
@@ -203,7 +221,7 @@ function ClosuresPanel({a}) {
 
   if (closures === null) return <div className="p-6 text-[12px] text-slate-500 font-mono">Loading closures…</div>;
 
-  const empty = closures.length === 0;
+  const empty = (closuresVisible || []).length === 0;
 
   return (
     <div className="p-4 space-y-4">
@@ -214,7 +232,7 @@ function ClosuresPanel({a}) {
             <div className="text-[10px] font-mono text-slate-500 small-caps mt-0.5">
               {empty
                 ? `no closures recorded yet — ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster · daily refresh will populate this list`
-                : `${fmtN(closures.length)} total closures recorded · ${fmtN(filtered.length)} in current view · ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster`}
+                : `${fmtN((closuresVisible || []).length)} total closures recorded${(closures && closuresVisible && closuresVisible.length !== closures.length) ? ' (' + fmtN(closures.length - closuresVisible.length) + ' hidden by brand filter)' : ''} · ${fmtN(filtered.length)} in current view · ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster`}
             </div>
           </div>
           <button onClick={exportCsv} disabled={filtered.length === 0}

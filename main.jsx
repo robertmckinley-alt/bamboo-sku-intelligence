@@ -164,7 +164,7 @@ function App() {
           )}
           {tab === 'closures' && (
             <div className="overflow-auto h-full">
-              <ClosuresPanel a={analytics} />
+              <ClosuresPanel a={analytics} hide={hide} />
             </div>
           )}
           {tab === 'buckets' && (
