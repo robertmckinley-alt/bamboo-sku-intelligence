@@ -30,6 +30,23 @@ function ClosuresPanel({a, hide}) {
   const [repType, setRepType] = useState('sr');       // 'sr' | 'vr'
   const [repFilter, setRepFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');   // 'All' | 'group' | 'product'
+
+  // Brand-hide flags (Micro Bar / Sungaze / PICC) come in via the analytics
+  // object — closures.json isn't filtered upstream like the matrix is.
+  const hidePatterns = useMemo(() => {
+    const out = [];
+    if (a && a.hide && a.hide.mb)   out.push('micro bar');
+    if (a && a.hide && a.hide.sg)   out.push('sungaze');
+    if (a && a.hide && a.hide.picc) out.push('picc');
+    return out;
+  }, [a && a.hide]);
+  const isHidden = (c) => {
+    if (!hidePatterns.length) return false;
+    const n = (c.skuName || '').toLowerCase();
+    const g = (c.skuGroup || '').toLowerCase();
+    for (const p of hidePatterns) { if (n.indexOf(p) >= 0 || g.indexOf(p) >= 0) return true; }
+    return false;
+  };
   const [range, setRange] = useState('30d');          // '7d' | '30d' | '90d' | 'mtd' | 'qtd' | 'ytd' | 'all' | 'custom'
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');

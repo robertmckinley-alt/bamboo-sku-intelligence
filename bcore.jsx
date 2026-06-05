@@ -353,6 +353,15 @@ function buildAnalytics(data, skuWeights, storeWeights, hide) {
     else cl.storeTag = 'CROSS-SELL';
   }
 
+  // The active hide flags follow the analytics object so the Closures tab —
+  // which reads data/closures.json directly, not the in-memory matrix — can
+  // filter rows by the same name patterns as buildAnalytics did upstream.
+  const _activeHide = {
+    mb:   !!(hide && hide.mb),
+    sg:   !!(hide && hide.sg),
+    picc: !!(hide && hide.picc),
+  };
+
   // A retailer is "active" if they have any revenue in the filtered universe.
   // Without any brand-hide flag this matches the full client list; with a hide
   // flag, stores whose only business was the hidden brand drop to .active=false
@@ -367,6 +376,7 @@ function buildAnalytics(data, skuWeights, storeWeights, hide) {
     skusByScore: byScore,
     clients: clientsEnriched,
     clientsActive: _activeClients,
+    hide: _activeHide,
     byClient, bySku,
     cats: allCats,
     benchmark,
