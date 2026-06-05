@@ -169,6 +169,12 @@
     const today = new Date(api.generated_at);
     // Strip " - House" / " - house" suffix to fold house accounts into the main rep.
     const normRep = (rn) => (rn || '').replace(/\s*-\s*house\s*$/i, '').trim();
+    // Site-wide VMI roster — anyone not on this list is dropped to 'Unassigned'
+    // for VMI purposes. Centralized so every page (Reps, Retailers, Top SKUs,
+    // Closures, drawers, CSVs) automatically respects it.
+    const VMI_PATTERNS = [/^josh\s+novak\b/i, /^koen\b/i, /^curtis\b/i];
+    const isVmi = (rn) => { const t = (rn || '').trim(); return VMI_PATTERNS.some(p => p.test(t)); };
+    const normVmi = (rn) => { const t = normRep(rn); return isVmi(t) ? t : 'Unassigned'; };
 
     // Build a contiguous re-index for surviving (non-TS-only) clients so the
     // matrix and every clients[] lookup stay consistent after the drop.
@@ -189,7 +195,7 @@
         i: newI,
         n: name,
         sr: normRep(reps[fr] ? reps[fr][1] : ''),
-        vr: normRep((vr != null && reps[vr]) ? reps[vr][1] : ''),
+        vr: normVmi((vr != null && reps[vr]) ? reps[vr][1] : ''),
         pg: pg || '',
         dl: dl || '',
         lic: lic || '',

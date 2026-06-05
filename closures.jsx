@@ -54,6 +54,13 @@ function ClosuresPanel({a, hide}) {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({key: 'ts', dir: 'desc'});
 
+  // Site-wide VMI roster gate. Same allowlist as apiAdapter.jsx — anything else
+  // collapses to 'Unassigned' so VMI counts/dropdowns/CSVs stay clean.
+  const VMI_PATTERNS = [/^josh\s+novak\b/i, /^koen\b/i, /^curtis\b/i];
+  const normVmiClosure = (rn) => {
+    const t = (rn || '').replace(/\s*-\s*house\s*$/i, '').trim();
+    return VMI_PATTERNS.some(p => p.test(t)) ? t : 'Unassigned';
+  };
   useEffect(() => {
     fetch('data/closures.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
       .then(r => r.ok ? r.json() : [])
@@ -67,6 +74,7 @@ function ClosuresPanel({a, hide}) {
             // Legacy rows (pre product-level): default type and skuGroup.
             if (!obj.type) obj.type = 'group';
             if (!obj.skuGroup) obj.skuGroup = obj.skuName || '';
+            obj.vr = normVmiClosure(obj.vr);
             return obj;
           });
           setClosures(arr);
@@ -75,6 +83,7 @@ function ClosuresPanel({a, hide}) {
           const arr = (d || []).map(o => {
             if (!o.type) o.type = 'group';
             if (!o.skuGroup) o.skuGroup = o.skuName || '';
+            o.vr = normVmiClosure(o.vr);
             return o;
           });
           setClosures(arr);
