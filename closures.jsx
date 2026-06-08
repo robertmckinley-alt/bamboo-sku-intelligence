@@ -219,7 +219,7 @@ function ClosuresPanel({a, hide}) {
     if (!closuresVisible) return [];
     let arr = closuresVisible.filter(c => c.ts > MIN_CLOSURE_DATE && c.ts >= dateFrom && c.ts <= dateTo);
     if (repFilter !== 'All') arr = arr.filter(c => (c[repType] || 'Unassigned') === repFilter);
-    if (typeFilter !== 'All') arr = arr.filter(c => (c.type || 'group') === typeFilter);
+    if (typeFilter !== 'All') arr = arr.filter(c => (c.type || 'top-sku') === typeFilter);
     if (search) {
       const q = search.toLowerCase();
       arr = arr.filter(c =>
@@ -261,14 +261,14 @@ function ClosuresPanel({a, hide}) {
     const stores = new Set(filtered.map(c => c.clientName)).size;
     // SKU groups: distinct parent group names (group rows use skuName; product rows
     // use skuGroup). This is the real ~82 SKU-group universe, not 1,000+ product names.
-    const groups = new Set(filtered.map(c => (c.type || "group") === "product" ? (c.skuGroup || "") : (c.skuName || ""))).size;
+    const groups = new Set(filtered.map(c => (c.type || "top-sku") === "cat-new" ? (c.skuGroup || "") : (c.skuName || ""))).size;
     // Products: distinct individual products won (only meaningful on type=product rows).
-    const products = new Set(filtered.filter(c => (c.type || "group") === "product").map(c => c.skuName || "")).size;
-    let groupCount = 0, productCount = 0;
+    const products = new Set(filtered.filter(c => (c.type || "top-sku") === "cat-new").map(c => c.skuName || "")).size;
+    let topSkuCount = 0, catNewCount = 0;
     for (const c of filtered) {
-      if ((c.type || "group") === "product") productCount += 1; else groupCount += 1;
+      if ((c.type || "top-sku") === "cat-new") catNewCount += 1; else topSkuCount += 1;
     }
-    return {count: filtered.length, rev, units, stores, groups, products, groupCount, productCount};
+    return {count: filtered.length, rev, units, stores, groups, products, topSkuCount, catNewCount};
   }, [filtered]);
 
   const click = (k) => setSort(s => ({key: k, dir: s.key === k && s.dir === 'desc' ? 'asc' : 'desc'}));
@@ -367,12 +367,12 @@ function ClosuresPanel({a, hide}) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Type</span>
             <div className="flex bg-slate-100 rounded-md p-0.5 text-[10px] font-semibold">
-              {[['All','All'],['group','Group'],['product','Product']].map(([k,l]) => (
+              {[['All','All'],['top-sku','Top SKU'],['cat-new','New Category']].map(([k,l]) => (
                 <button key={k} onClick={() => setTypeFilter(k)}
                         className={`px-2 py-0.5 rounded ${typeFilter===k?'bg-slate-900 text-white shadow-sm':'text-slate-600 hover:text-slate-900'}`}>{l}</button>
               ))}
             </div>
-            <span className="text-[10px] font-mono text-slate-400">group = first order in a SKU group · product = new product in an existing group</span>
+            <span className="text-[10px] font-mono text-slate-400">top-sku = priority SKU first ordered at this store · cat-new = retail-category line first opened at this store</span>
           </div>
         </div>
       </div>
@@ -382,7 +382,7 @@ function ClosuresPanel({a, hide}) {
         <div className="bg-white border border-slate-200 rounded-lg px-4 py-3">
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Closures</div>
           <div className="font-mono tabular-nums text-[18px] font-semibold text-slate-900 mt-0.5">{fmtN(totals.count)}</div>
-          <div className="text-[10px] font-mono text-slate-500 mt-0.5"><span className="text-emerald-700">{fmtN(totals.groupCount)} group</span> · <span className="text-amber-700">{fmtN(totals.productCount)} product</span></div>
+          <div className="text-[10px] font-mono text-slate-500 mt-0.5"><span className="text-emerald-700">{fmtN(totals.topSkuCount)} top-sku</span> · <span className="text-amber-700">{fmtN(totals.catNewCount)} cat-new</span></div>
         </div>
         <div className="bg-white border border-slate-200 rounded-lg px-4 py-3">
           <div className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Revenue Captured</div>
@@ -440,7 +440,7 @@ function ClosuresPanel({a, hide}) {
                 <tbody>
                   {filtered.slice(0, 1500).map((c, i) => {
                     const t = c.type || 'group';
-                    const isProd = t === 'product';
+                    const isProd = t === 'cat-new';
                     return (
                       <tr key={i}>
                         <td className="font-mono tabular-nums text-[10px] text-slate-600">{c.ts}</td>
@@ -451,7 +451,7 @@ function ClosuresPanel({a, hide}) {
                             color: isProd ? '#92400e' : '#065f46',
                             borderColor: isProd ? '#fde68a' : '#a7f3d0'}}
                             title={isProd ? 'New product in a SKU group this store already carried' : 'First order in a brand-new SKU group for this store'}>
-                            {isProd ? 'product' : 'group'}
+                            {isProd ? 'New Category' : 'Top SKU'}
                           </span>
                         </td>
                         <td className="max-w-[240px]">
