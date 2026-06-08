@@ -30,7 +30,7 @@ function ClosuresPanel({a, hide}) {
 
   const [repType, setRepType] = useState('sr');       // 'sr' | 'vr'
   const [repFilter, setRepFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All');   // 'All' | 'group' | 'product'
+  const [typeFilter, setTypeFilter] = useState('All');   // 'All' | 'top-sku' | 'cat-new'
 
   // Brand-hide flags (Micro Bar / Sungaze / PICC) come in via the analytics
   // object — closures.json isn't filtered upstream like the matrix is.
@@ -79,7 +79,7 @@ function ClosuresPanel({a, hide}) {
             const obj = {};
             for (let i = 0; i < c.length; i++) obj[c[i]] = row[i];
             // Legacy rows (pre product-level): default type and skuGroup.
-            if (!obj.type) obj.type = 'group';
+            if (!obj.type) obj.type = 'top-sku';
             if (!obj.skuGroup) obj.skuGroup = obj.skuName || '';
             obj.vr = normVmiClosure(obj.vr);
             return obj;
@@ -88,7 +88,7 @@ function ClosuresPanel({a, hide}) {
         } else {
           // Older array-of-objects shape; still backfill.
           const arr = (d || []).map(o => {
-            if (!o.type) o.type = 'group';
+            if (!o.type) o.type = 'top-sku';
             if (!o.skuGroup) o.skuGroup = o.skuName || '';
             o.vr = normVmiClosure(o.vr);
             return o;
@@ -286,8 +286,8 @@ function ClosuresPanel({a, hide}) {
         const s = String(v);
         return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
       };
-      const t = c.type || 'group';
-      const grp = c.skuGroup || (t === 'group' ? c.skuName : '');
+      const t = c.type || 'top-sku';
+      const grp = c.skuGroup || (t === 'top-sku' ? c.skuName : '');
       rows.push([c.ts, c.clientName, t, c.skuName, grp, c.category, c.rev, c.units, c.sr, c.vr].map(esc).join(','));
     }
     const blob = new Blob([rows.join('\n')], {type: 'text/csv;charset=utf-8'});
@@ -439,7 +439,7 @@ function ClosuresPanel({a, hide}) {
                 </thead>
                 <tbody>
                   {filtered.slice(0, 1500).map((c, i) => {
-                    const t = c.type || 'group';
+                    const t = c.type || 'top-sku';
                     const isProd = t === 'cat-new';
                     return (
                       <tr key={i}>

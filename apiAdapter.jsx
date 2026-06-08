@@ -5,12 +5,13 @@
 // Exposes window.BambooApiAdapter = { fetchReport, adapt, loadLiveDataset, API_URL }
 
 (function () {
-  // Pin the API range start to the day SKU-level tracking became reliable
-  // (5/27 = first day client_product_sales returned by API; we attribute
-  // closures from 5/28 forward). The PERIOD header at the top of the page
-  // honors this — so every dashboard metric (revenue, units, top SKUs,
-  // retailer totals) is consistent with the closure ledger.
-  const API_URL = 'https://api-intelligence.getbamboo.com/api/reports?from=2026-05-28';
+  // Bamboo Intelligence API — return everything (year-to-date) so the
+  // dashboard's PERIOD header and retailer/SKU counts reflect every active
+  // store, not just stores with recent activity. (We previously pinned this
+  // to ?from=2026-05-28 to align with the closures tracker, but that dropped
+  // ~115 stores that hadn't ordered in the window. The closures page already
+  // applies its own 6/1+ filter — no need to constrain the global API call.)
+  const API_URL = 'https://api-intelligence.getbamboo.com/api/reports';
 
   const c2d = (cents) => Math.round(cents) / 100;
 
