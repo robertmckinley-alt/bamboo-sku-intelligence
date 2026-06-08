@@ -1,3 +1,4 @@
 {
-  "tracker_start": "2026-06-08"
+  "tracker_start": "2026-05-27",
+  "tracker_start_note": "First day client_product_sales was returned by the Bamboo API (per-SKU history). Closures before this date cannot be reconstructed at SKU granularity."
 }
