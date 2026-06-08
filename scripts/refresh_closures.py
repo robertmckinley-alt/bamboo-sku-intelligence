@@ -223,50 +223,128 @@ def infer_top_category(name: str) -> str:
     return 'Other'
 
 
-def diff(prev_api, curr_api, today):
+def diff(prev_api, curr_api, today, existing_set_group=None, existing_set_product=None):
+    """Detect new (store, group) and (store, product) placements.
+
+    The previous-snapshot rev-flip approach broke on us: the API range covers
+    the whole calendar year, so any (store, product) that's ever had a sale
+    stays at rev > 0 for the rest of the year. Day-over-day diffs almost
+    always come up empty.
+
+    New approach: use last_ordered_at_utc as the day signal, and dedupe
+    against the running closures.json so we never re-emit a placement we've
+    already recorded.
+
+    existing_set_group   = set of (norm_client_lower, group_name_lower)
+    existing_set_product = set of (norm_client_lower, product_name_lower)
+    """
     clients = client_lookup(curr_api)
     perf    = perf_category_lookup(curr_api)
     closures = []
 
-    # 1) Group-level
-    curr_g = name_keyed_sales(curr_api)
-    prev_g = name_keyed_sales(prev_api) if prev_api else {}
-    group_new = set()
-    for (norm_name, sku_name), cell in curr_g.items():
-        if cell['rev_cents'] <= 0: continue
-        prev_cell = prev_g.get((norm_name, sku_name))
-        if prev_cell is not None and prev_cell['rev_cents'] > 0: continue
-        group_new.add((norm_name, sku_name))
-        display = cell.get('display', norm_name)
-        cli = clients.get(display, {})
-        pc  = perf.get(sku_name, {'cat': 'Other'})
+    clients_d  = curr_api['dimensions']['clients']['rows']
+    products_d = curr_api['dimensions']['products']['rows']
+    retail_d   = curr_api['dimensions']['retail_categories']['rows']
+    cps        = (curr_api.get('facts') or {}).get('client_product_sales')
+    if not cps or not isinstance(cps.get('row'), list):
+        print("  client_product_sales fact missing — cannot detect product closures")
+        return closures
+
+    los = cps.get('last_ordered_at_utc') or []
+    if not los or len(los) != len(cps['row']):
+        print("  last_ordered_at_utc missing or mis-sized — cannot detect closures")
+        return closures
+
+    # Cap the closure date at TODAY in case the API ever surfaces stamps in the
+    # future. Floor at MIN_CLOSURE_DATE so we don't flood with pre-baseline rows.
+    MIN_CLOSURE_DATE = '2026-05-03'
+
+    existing_set_group   = existing_set_group   or set()
+    existing_set_product = existing_set_product or set()
+    seen_g = set()
+    seen_p = set()
+    group_max_day = {}  # (norm, group_lower) -> max date string
+
+    for i in range(len(cps['row'])):
+        ts = los[i]
+        if not ts: continue
+        day = ts[:10]
+        if day < MIN_CLOSURE_DATE: continue
+        if day > today: day = today
+        rev = cps['revenue_cents'][i]
+        if rev <= 0: continue
+        cidx = cps['row'][i]; pidx = cps['col'][i]
+        if cidx is None or cidx < 0 or cidx >= len(clients_d): continue
+        cli = clients_d[cidx]
+        client_name = cli[1]
+        if is_test_client(client_name): continue
+        if pidx is None or pidx < 0 or pidx >= len(products_d): continue
+        prow = products_d[pidx]
+        pname = prow[1]
+        if should_drop(pname): continue
+        grp_idx = prow[3] if len(prow) > 3 else None
+        gname = ''
+        if grp_idx is not None and 0 <= grp_idx < len(retail_d):
+            gname = retail_d[grp_idx][1] or ''
+        if should_drop(gname): continue
+        units = (cps.get('units') or [0]*len(cps['row']))[i]
+        norm = norm_client(client_name).lower()
+        cat = infer_top_category(gname) if gname else 'Other'
+        cli_rep = clients.get(client_name, {})
+        sr = cli_rep.get('sr', 'Unassigned')
+        vr = cli_rep.get('vr', 'Unassigned')
+
+        # Group-level closure (dedup against existing + within this run)
+        gk = (norm, gname.lower())
+        if gk not in existing_set_group and gk not in seen_g:
+            # Use the LATEST product last_ordered as the group date — accumulate
+            # then emit once after the loop. For now stash the candidate.
+            group_max_day[gk] = max(group_max_day.get(gk, day), day)
+
+        # Product-level closure
+        pk = (norm, pname.lower())
+        if pk not in existing_set_product and pk not in seen_p:
+            seen_p.add(pk)
+            closures.append({
+                'ts': day, 'clientName': client_name, 'skuName': pname,
+                'category': cat,
+                'rev': round(rev / 100, 2), 'units': int(units),
+                'sr': sr, 'vr': vr,
+                'type': 'product', 'skuGroup': gname,
+            })
+
+    # Emit group closures using their max-date across products at that store.
+    for gk, day in group_max_day.items():
+        norm, glower = gk
+        # We need a representative row to grab display info; scan again briefly.
+        # Re-derive client display + sr/vr from the first matching client.
+        # For perf, build a quick map.
+        pass
+
+    # Build a fast (norm -> display_client + sr/vr) lookup so the group emit
+    # below stays O(1) instead of re-scanning.
+    norm_to_meta = {}
+    for cli in clients_d:
+        n = norm_client(cli[1]).lower()
+        if n not in norm_to_meta:
+            norm_to_meta[n] = {'display': cli[1], **(clients.get(cli[1]) or {'sr':'Unassigned','vr':'Unassigned'})}
+
+    for (norm, glower), day in group_max_day.items():
+        meta = norm_to_meta.get(norm, {'display': norm, 'sr':'Unassigned', 'vr':'Unassigned'})
+        # Find display group name (we lower-cased): scan retail_d
+        display_g = glower
+        for row in retail_d:
+            if (row[1] or '').lower() == glower:
+                display_g = row[1]; break
+        cat = infer_top_category(display_g) if display_g else 'Other'
         closures.append({
-            'ts': today, 'clientName': display, 'skuName': sku_name,
-            'category': pc['cat'],
-            'rev': round(cell['rev_cents'] / 100, 2), 'units': int(cell['units']),
-            'sr': cli.get('sr', 'Unassigned'), 'vr': cli.get('vr', 'Unassigned'),
-            'type': 'group', 'skuGroup': sku_name,
+            'ts': day, 'clientName': meta['display'], 'skuName': display_g,
+            'category': cat,
+            'rev': 0.0, 'units': 0,
+            'sr': meta['sr'], 'vr': meta['vr'],
+            'type': 'group', 'skuGroup': display_g,
         })
 
-    # 2) Product-level (expansion within an existing group)
-    curr_p = name_keyed_product_sales(curr_api)
-    prev_p = name_keyed_product_sales(prev_api) if prev_api else None
-    if curr_p is not None and prev_p is not None:
-        for (norm_name, prod_idx), cell in curr_p.items():
-            if cell['rev_cents'] <= 0: continue
-            prev_cell = prev_p.get((norm_name, prod_idx))
-            if prev_cell is not None and prev_cell['rev_cents'] > 0: continue
-            if (norm_name, cell['group_name']) in group_new: continue
-            display = cell.get('display', norm_name)
-            cli = clients.get(display, {})
-            closures.append({
-                'ts': today, 'clientName': display,
-                'skuName': cell['product_name'],
-                'category': cell.get('cat', 'Other'),
-                'rev': round(cell['rev_cents'] / 100, 2), 'units': int(cell['units']),
-                'sr': cli.get('sr', 'Unassigned'), 'vr': cli.get('vr', 'Unassigned'),
-                'type': 'product', 'skuGroup': cell['group_name'],
-            })
     return closures
 
 
@@ -286,7 +364,27 @@ def main():
     else:
         print("  no previous snapshot — bootstrapping baseline (0 closures expected on first run)")
 
-    new = diff(prev_api, curr_api, today)
+    existing_for_dedup = load_closures(CLOSURES_PATH)
+    existing_set_group = set()
+    existing_set_product = set()
+    # Support both compact {cols, rows} form and array-of-dicts form.
+    if isinstance(existing_for_dedup, list):
+        for r in existing_for_dedup:
+            if isinstance(r, list):
+                # compact row layout — assume COMPACT_COLS order
+                rd = dict(zip(COMPACT_COLS, r))
+            else:
+                rd = r
+            cn = norm_client(rd.get('clientName') or '').lower()
+            tp = (rd.get('type') or 'group')
+            sk = (rd.get('skuName') or '').lower()
+            grp = (rd.get('skuGroup') or sk).lower()
+            if tp == 'product':
+                existing_set_product.add((cn, sk))
+            else:
+                existing_set_group.add((cn, grp))
+    print(f"  existing dedup sets: {len(existing_set_group)} groups · {len(existing_set_product)} products")
+    new = diff(prev_api, curr_api, today, existing_set_group, existing_set_product)
     by_type = {'group': 0, 'product': 0}
     for c in new: by_type[c['type']] = by_type.get(c['type'], 0) + 1
     print(f"  detected {len(new)} closures ({by_type.get('group',0)} group + {by_type.get('product',0)} product)")
