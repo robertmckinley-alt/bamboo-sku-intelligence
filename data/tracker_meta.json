@@ -1,6 +1,6 @@
 {
   "tracker_start": "2026-06-01",
   "baseline_snapshot_date": "2026-05-31",
-  "spec_version": "2026-06-08-c",
-  "tracker_start_note": "New business in existing stores. Baseline = 5/31 EOD snapshot. From 6/1 forward: top 20 retail-categories track their top 10 SKUs individually (one closure per first-time SKU placement at a store); tail categories + all of Dabstract roll up to one closure per (store, retail_category) per wave of new SKUs, with revenue summed across the new SKUs in that wave."
+  "spec_version": "2026-06-08-d",
+  "tracker_start_note": "Report tracks NEW BUSINESS in existing stores. Two closure types only: (1) top-sku - rep landed one of the top-10 SKUs in a priority retail-category at a store that did not have it 1/1-5/31; (2) cat-new - store opened a retail-category line they were not selling 1/1-5/31. Cat-expansion (existing line, new non-top SKUs) is NOT a closure - those are reorders."
 }
