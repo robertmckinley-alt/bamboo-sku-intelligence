@@ -1,4 +1,4 @@
 {
-  "tracker_start": "2026-05-28",
-  "tracker_start_note": "First full day after the Bamboo API began returning per-SKU history (client_product_sales). The 5/27 snapshot is the diff baseline; the first day we can ATTRIBUTE a closure to is 5/28."
+  "tracker_start": "2026-06-01",
+  "tracker_start_note": "Closure ledger starts on 2026-06-01. The 5/31 EOD snapshot (committed 2026-05-31 17:44 UTC) is the diff baseline; any (store, product) pair newly appearing in subsequent snapshots is a verified new placement."
 }

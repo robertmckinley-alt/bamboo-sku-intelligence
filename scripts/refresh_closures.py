@@ -330,12 +330,22 @@ def diff(prev_api, curr_api, today, existing_set_group=None, existing_set_produc
         elif gk in seen_g:
             if day < new_group_dates.get(gk, day): new_group_dates[gk] = day
 
+    # Roll up product rev/units into each group row so 'Type = Group' filters
+    # show real money, not zeros.
+    from collections import defaultdict as _dd
+    group_rollup = _dd(lambda: {'rev':0.0, 'units':0})
+    for c in closures:
+        if c['type'] == 'product':
+            k = (norm_client(c['clientName']).lower(), c['skuGroup'].lower())
+            group_rollup[k]['rev']   += c['rev']
+            group_rollup[k]['units'] += c['units']
     for gk, day in new_group_dates.items():
         m = new_group_meta[gk]
+        roll = group_rollup.get(gk, {'rev':0.0, 'units':0})
         closures.append({
             'ts': day, 'clientName': m['client'], 'skuName': m['group_display'],
             'category': m['cat'],
-            'rev': 0.0, 'units': 0,
+            'rev': round(roll['rev'], 2), 'units': int(roll['units']),
             'sr': m['sr'], 'vr': m['vr'],
             'type': 'group', 'skuGroup': m['group_display'],
         })
