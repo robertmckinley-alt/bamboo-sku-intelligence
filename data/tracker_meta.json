@@ -1,4 +1,4 @@
 {
-  "tracker_start": "2026-05-27",
-  "tracker_start_note": "First day client_product_sales was returned by the Bamboo API (per-SKU history). Closures before this date cannot be reconstructed at SKU granularity."
+  "tracker_start": "2026-05-28",
+  "tracker_start_note": "First full day after the Bamboo API began returning per-SKU history (client_product_sales). The 5/27 snapshot is the diff baseline; the first day we can ATTRIBUTE a closure to is 5/28."
 }

@@ -5,7 +5,12 @@
 // Exposes window.BambooApiAdapter = { fetchReport, adapt, loadLiveDataset, API_URL }
 
 (function () {
-  const API_URL = 'https://api-intelligence.getbamboo.com/api/reports';
+  // Pin the API range start to the day SKU-level tracking became reliable
+  // (5/27 = first day client_product_sales returned by API; we attribute
+  // closures from 5/28 forward). The PERIOD header at the top of the page
+  // honors this — so every dashboard metric (revenue, units, top SKUs,
+  // retailer totals) is consistent with the closure ledger.
+  const API_URL = 'https://api-intelligence.getbamboo.com/api/reports?from=2026-05-28';
 
   const c2d = (cents) => Math.round(cents) / 100;
 
