@@ -61,6 +61,13 @@ function ClosuresPanel({a, hide}) {
     const t = (rn || '').replace(/\s*-\s*house\s*$/i, '').trim();
     return VMI_PATTERNS.some(p => p.test(t)) ? t : 'Unassigned';
   };
+  const [trackerStart, setTrackerStart] = useState(null);
+  useEffect(() => {
+    fetch('data/tracker_meta.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j && j.tracker_start) setTrackerStart(j.tracker_start); })
+      .catch(()=>{});
+  }, []);
   useEffect(() => {
     fetch('data/closures.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
       .then(r => r.ok ? r.json() : [])
@@ -305,7 +312,7 @@ function ClosuresPanel({a, hide}) {
             <div className="text-[10px] font-mono text-slate-500 small-caps mt-0.5">
               {empty
                 ? `no closures recorded yet — ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster · daily refresh will populate this list`
-                : `${fmtN((closuresVisible || []).length)} total closures recorded${(closures && closuresVisible && closuresVisible.length !== closures.length) ? ' (' + fmtN(closures.length - closuresVisible.length) + ' hidden by brand filter)' : ''} · ${fmtN(filtered.length)} in current view · ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster`}
+                : `${fmtN((closuresVisible || []).length)} total closures recorded${(closures && closuresVisible && closuresVisible.length !== closures.length) ? ' (' + fmtN(closures.length - closuresVisible.length) + ' hidden by brand filter)' : ''} · ${fmtN(filtered.length)} in current view · ${fmtN(repOptions.length - 1)} ${repType==='sr'?'sales':'VMI'} reps in roster${trackerStart ? ' · tracker started ' + trackerStart : ''}`}
             </div>
           </div>
           <button onClick={exportCsv} disabled={filtered.length === 0}
