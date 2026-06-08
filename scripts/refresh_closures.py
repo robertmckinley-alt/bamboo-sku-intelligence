@@ -132,13 +132,26 @@ def compute_closures(baseline_api, curr_api, top_map):
             d["rev"]+=r; d["units"]+=u; d["skus"].append(p)
             d["sr"]=m["sr"]; d["vr"]=m["vr"]
             if d["last"] is None or l<d["last"]: d["last"]=l
+    # Build set of (store, cat) that already fired a top-sku closure so we
+    # don't double-count the "store opened this category" business event.
+    top_sku_keys = set()
+    for c in closures:
+        if c.get("type") == "top-sku":
+            top_sku_keys.add((c["clientName"], c["skuGroup"]))
     for (c,cat),d in cat_bucket.items():
-        kind = "cat-expansion" if (c,cat) in CAT_BASE else "cat-new"
+        # cat-expansion (store already had this line) is reorder noise — skip.
+        if (c,cat) in CAT_BASE:
+            continue
+        # If the same (store, cat) already fired a top-sku closure, the
+        # "new line opened at store" signal is already captured — skip the
+        # cat-new too to avoid double-counting the same event.
+        if (c,cat) in top_sku_keys:
+            continue
         name = d["skus"][0] if len(d["skus"])==1 else f'{len(d["skus"])} new SKU(s) in {cat}'
         closures.append({"ts":d["last"][:10],"clientName":c,"skuName":name,"category":infer_top(cat),
                          "rev":round(d["rev"]/100,2),"units":int(d["units"]),
                          "sr":d["sr"],"vr":gate_vmi(d["vr"]),
-                         "type":kind,"skuGroup":cat,"closureKind":kind})
+                         "type":"cat-new","skuGroup":cat,"closureKind":"cat-new"})
     return closures
 
 def main():
