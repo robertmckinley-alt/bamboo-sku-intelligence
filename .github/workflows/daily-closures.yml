@@ -47,12 +47,16 @@ jobs:
         run: |
           git config user.name  "$AUTHOR_NAME"
           git config user.email "$AUTHOR_EMAIL"
-          git add data/closures.json data/api-snapshot.json
+          # Stop committing api-snapshot.json — it's a 6.5 MB file that nothing
+          # reads client-side and grows the repo by ~1-2 GB/year. The cron still
+          # writes it locally so subsequent diff steps can read it, but we don't
+          # persist it.
+          git add data/closures.json
           if git diff --quiet --cached; then
             echo "No changes to commit."
             exit 0
           fi
           STAMP="$(date -u +'%Y-%m-%d')"
-          NEW_CLOSURES="$(python -c 'import json; from datetime import datetime, timezone; d=json.load(open("data/closures.json")); today=datetime.now(timezone.utc).date().isoformat(); rows = ([dict(zip(d["cols"], r)) for r in d["rows"]] if isinstance(d, dict) and "cols" in d else d); print(sum(1 for c in rows if c.get("ts")==today))')"
-          git commit -m "Daily closures refresh — ${STAMP} (+${NEW_CLOSURES} closures today)"
+          TOTAL="$(python -c 'import json; d=json.load(open("data/closures.json")); rows = d["rows"] if isinstance(d, dict) and "cols" in d else d; print(len(rows))')"
+          git commit -m "Daily closures refresh — ${STAMP} (total ${TOTAL} closures in ledger)"
           git push

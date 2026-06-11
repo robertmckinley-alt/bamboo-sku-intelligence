@@ -21,8 +21,8 @@ const { Tag } = window.BambooUI;
 //
 // This tab loads closures.json, filters by date range / rep /
 // search, and exports CSV for reporting up the chain.
-const MIN_CLOSURE_DATE = '2026-05-02';  // exclusive — closures dated 5/3 or later are true post-baseline voids
-const DATA_START      = '2026-05-03';  // inclusive — earliest day our tracker has reliable data
+const MIN_CLOSURE_DATE = '2026-05-31';  // exclusive — closures dated 6/1 or later are post-baseline (spec v2026-06-08-d)
+const DATA_START      = '2026-06-01';  // inclusive — ledger start per spec v2026-06-08-d
 
 function ClosuresPanel({a, hide}) {
   const [closures, setClosures] = useState(null);

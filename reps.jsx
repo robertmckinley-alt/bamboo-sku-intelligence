@@ -257,8 +257,11 @@ function RepsPanel({a, onPickClient, onPickSku, onExportRep}) {
 
       {sel && (() => {
         // Pull this rep's clients, sort by opp score, show as a high-priority list.
+        // sel.clientIds may be a few hundred entries — use a Set so the filter
+        // is O(N) per render instead of O(N × M).
+        const clientIdSet = new Set(sel.clientIds);
         const repClients = a.clients
-          .filter(c => sel.clientIds.includes(c.i) && c.active !== false)
+          .filter(c => clientIdSet.has(c.i) && c.active !== false)
           .slice()
           .sort((x, y) => (y.oppScore || 0) - (x.oppScore || 0));
         const callNow  = repClients.filter(c => c.storeTag === 'CALL NOW');

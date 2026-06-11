@@ -1358,7 +1358,7 @@ function DistributionMatrix({a, onPickSku, onPickClient, onCellClick}) {
     else if (skuSort === 'score') arr.sort((x,y) => y.score - x.score);
     else if (skuSort === 'stores') arr.sort((x,y) => y.stores - x.stores);
     return arr;
-  }, [a, catFilter, skuTagFilter, skuSearch, skuSort]);
+  }, [a, catFilter, skuSearch, skuSort]);
 
   const clients = useMemo(() => {
     let arr = [...a.clients];
