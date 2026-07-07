@@ -18,8 +18,9 @@ function App() {
   useEffect(() => {
     // Penetration goals live in a separate file so they can be regenerated
     // independently from the dataset (see scripts/build_penetration_goals.py).
-    // The map is {sku_group_id: 0..1} keyed by SKU group ID, used globally
-    // by the SKU engine, the rep page, the VMI page, and the SKU drawer.
+    // The map is {normalized_sku_group_name: 0..1} keyed by NAME (the live API
+    // assigns SKU ids dynamically), used globally by the SKU engine, the rep
+    // page, the VMI page, and the SKU drawer. Lookup lives in bcore normName().
     const fetchGoals = () => fetch('data/penetration_goals.json?v=' + (window.__BAMBOO_BUILD || Date.now()), {cache: 'no-cache'})
       .then(r => r.ok ? r.json() : {})
       .catch(() => ({}));
@@ -225,6 +226,8 @@ function RepLeaderboard({a, onPickClient, onExportRep}) {
     const r = {};
     for (const c of a.clients) {
       const k = c[repType] || 'Unassigned';
+      // VMI mode shows only the gated roster — no Unassigned card (spec §6).
+      if (repType === 'vr' && k === 'Unassigned') continue;
       if (!r[k]) r[k] = {name: k, stores: 0, revenue: 0, units: 0, orders: 0, missedRev: 0};
       r[k].stores++;
       r[k].revenue += c.rev;

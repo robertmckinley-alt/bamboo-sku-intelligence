@@ -366,7 +366,18 @@ function buildAnalytics(data, skuWeights, storeWeights, hide) {
   // Without any brand-hide flag this matches the full client list; with a hide
   // flag, stores whose only business was the hidden brand drop to .active=false
   // and stop counting in store totals, lists, and per-rep aggregations.
-  clientsEnriched.forEach(cl => { cl.active = ((cl.rev || 0) > 0); });
+  //
+  // cl.rev is whole-order revenue from client_rep_sales and is NOT reduced by
+  // the brand filter, so it can't detect hidden-brand-only stores. When a hide
+  // flag is on, activity must come from the filtered matrix instead.
+  const _hideActive = !!(hide && (hide.mb || hide.sg || hide.picc));
+  if (_hideActive) {
+    const _hasFilteredRev = new Set();
+    for (const m of matrix) { if ((m.r || 0) > 0) _hasFilteredRev.add(m.c); }
+    clientsEnriched.forEach(cl => { cl.active = _hasFilteredRev.has(cl.i); });
+  } else {
+    clientsEnriched.forEach(cl => { cl.active = ((cl.rev || 0) > 0); });
+  }
   const _activeClients = clientsEnriched.filter(cl => cl.active);
   meta = { ...meta, totalClients: _activeClients.length };
 

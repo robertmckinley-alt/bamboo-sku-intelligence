@@ -12,8 +12,10 @@ Definition of a closure (no exceptions):
         the top-10 for that category -> emit TOP-SKU closure (one per pair)
       - else -> roll up to (store, retail_category) bucket; one closure per
         bucket, revenue = sum of all new non-top SKUs landing there.
-  * Bucket closures get type "cat-new" if (store, cat) NOT in CAT_BASELINE,
-    "cat-expansion" otherwise. Top-SKU closures get type "top-sku".
+  * Bucket closures are emitted as "cat-new" only when (store, cat) is NOT in
+    CAT_BASELINE and no top-sku closure already fired for that (store, cat).
+    Cat-expansion (store already had the line) is skipped entirely — it never
+    appears in the output (spec v2026-06-08-d). Top-SKU closures get "top-sku".
 
 Test stores are excluded; trade-sample / discontinued SKUs filtered via the
 should_drop helper. VMI rep is gated to Josh Novak / Koen / Curtis.
@@ -25,7 +27,11 @@ from __future__ import annotations
 import json, re, sys, datetime, pathlib, urllib.request
 from collections import defaultdict
 
-API_URL = "https://api-intelligence.getbamboo.com/api/reports?from=2026-05-28"
+# NO ?from= query param — the API honors it by dropping stores without recent
+# activity, which broke dashboard counts once before (see CLAUDE.md §7,
+# reverted in bb29086). Closure detection filters to 6/1+ itself via
+# last_ordered_at_utc, so the unconstrained pull is numbers-identical here.
+API_URL = "https://api-intelligence.getbamboo.com/api/reports"
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SNAPSHOT_PATH        = ROOT / "data" / "api-snapshot.json"
@@ -58,10 +64,16 @@ def gate_vmi(name):
     return t if any(p.search(t) for p in VMI_PATTERNS) else "Unassigned"
 
 _CAT_HINTS = [
+    # PICC is all prerolls (infused + non-infused) and Vape Carry Case is an
+    # accessory — both must match BEFORE the generic keyword rows below
+    # (PICC names contain "hash"/"flower"; the case contains "vape").
+    # Mirrors inferTopCategory() in apiAdapter.jsx (Johnny, 7/1).
+    ("Prerolls", ["picc"]),
+    ("Accessories", ["carry case"]),
     ("Vapes", ["aio","510","cartridge","liquid gold","panda pen","micro bar","juice box","capsule"]),
     ("Prerolls", ["preroll","bangers","mega roll","firecracker","sparkler","huxton","infused joint","banger"]),
     ("Flower", ["flower","bong buddies","kandy shoppe","eluzion","cake house","snickle fritz flower"]),
-    ("Concentrates", ["cake icing","sugar","live resin","rosin","cake batter","opal","gems n","cake icing"]),
+    ("Concentrates", ["cake icing","sugar","live resin","rosin","cake batter","opal","gems n"]),
     ("Edibles", ["gummi","fruit drops","cbn","candies","chocolates","gummiez","gummy"]),
     ("Beverage", ["hot shotz","sungaze","drink","soda"]),
     ("Topicals", ["balm","body butter","cream","topical"]),

@@ -95,7 +95,7 @@ function HowTo({a}) {
               <li><strong>Top SKUs tab</strong> — individual products ranked by category, with rep filters and a "missing only" toggle for fast pitch lists.</li>
               <li><strong>CSV exports everywhere</strong> — one-click <code>↓ CSV</code> buttons on the SKU Engine, the Reps store list, and the Closures log, plus the existing call-sheet CSV. Every export honors whatever filters and sort you have applied.</li>
               <li><strong>Trade-sample-only stores are hidden</strong> — a store that has only ever taken trade samples no longer clutters the reports; it reappears the moment it places a real revenue order.</li>
-              <li><strong>Category cleanup</strong> — SKU groups are sorted into the right high-level category: Micro Bar → Vapes, Sungaze → Beverage, Mega Rolls / Huxton / all Bangers → Prerolls, Macro Bar &amp; Panda Battery → Accessories, and more.</li>
+              <li><strong>Category cleanup</strong> — SKU groups are sorted into the right high-level category: Micro Bar → Vapes, Sungaze → Beverage, Mega Rolls / Huxton / all Bangers / all PICC → Prerolls, Macro Bar &amp; Panda Battery &amp; Vape Carry Case → Accessories, and more.</li>
             </ul>
           </Section>
 

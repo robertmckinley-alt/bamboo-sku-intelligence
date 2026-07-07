@@ -39,6 +39,7 @@ function TopSkusPanel({a, onPickProduct, onPickSku}) {
     const map = new Map();
     for (const cl of a.clients) {
       const k = cl[repType] || 'Unassigned';
+      if (repType === 'vr' && k === 'Unassigned') continue;   // VMI dropdowns suppress Unassigned
       map.set(k, (map.get(k) || 0) + (cl.rev || 0));
     }
     const arr = [...map.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);

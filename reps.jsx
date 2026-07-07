@@ -414,6 +414,7 @@ function MissingProductsDrawer({a, init, onClose}) {
     for (const cl of a.clients) {
       if (cl.active === false) continue;
       const k = cl[repType] || 'Unassigned';
+      if (repType === 'vr' && k === 'Unassigned') continue;   // VMI dropdowns suppress Unassigned
       if (!m.has(k)) m.set(k, []);
       m.get(k).push(cl.i);
     }

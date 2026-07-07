@@ -320,7 +320,7 @@ function AppBar({tabs, tab, setTab, onBulkExport, hideMB, setHideMB, hideSG, set
         <HidePill on={hideSG}   setOn={setHideSG}   label="Sungaze" />
         <HidePill on={hidePICC} setOn={setHidePICC} label="PICC" />
         <button onClick={onBulkExport} className="btn btn-emerald">↓ Bulk Call Sheet</button>
-        <span className="text-[10px] text-slate-400 font-mono hidden xl:inline">/ search · 1-5 tabs · esc close</span>
+        <span className="text-[10px] text-slate-400 font-mono hidden xl:inline">/ search · 1-8 tabs · esc close</span>
       </div>
     </header>
   );

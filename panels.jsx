@@ -205,6 +205,7 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
           const s = new Set();
           for (const cl of a.clients) {
             const k = cl[drawerRepType] || 'Unassigned';
+            if (drawerRepType === 'vr' && k === 'Unassigned') continue;   // VMI dropdowns suppress Unassigned
             if (k) s.add(k);
           }
           return ['All', ...[...s].sort()];

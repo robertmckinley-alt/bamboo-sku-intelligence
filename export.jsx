@@ -3,8 +3,14 @@ const { fmt$, fmtN, fmtPct, fmtNum } = window.BambooCore;
 
 // ============== Call Sheet Export ==============
 
-function buildCallSheetData(a, clientIds) {
+// focusSkuIds (optional): SKU group ids the caller wants pitched — e.g. the
+// pipeline built in the SKU drawer, or the checkboxes in the Retailer drawer's
+// Missing Top SKUs table. When present, those SKUs lead each store's pitch
+// list (skipping any the store already carries); the usual top-30 gaps fill
+// the remaining slots. Without it, behavior is unchanged.
+function buildCallSheetData(a, clientIds, focusSkuIds) {
   const rows = [];
+  const focus = (focusSkuIds || []).filter(sid => a.skuById.has(sid));
   for (const cid of clientIds) {
     const cl = a.clients[cid];
     if (!cl) continue;
@@ -14,7 +20,21 @@ function buildCallSheetData(a, clientIds) {
       .filter(x => x.sku)
       .sort((x,y) => y.r - x.r);
     const topCarrying = carrying.slice(0, 5);
-    const missing = (cl.missingDetails || []).slice(0, 8);
+    let missing = (cl.missingDetails || []).slice(0, 8);
+    if (focus.length) {
+      const carriedSet = new Set(carrying.map(x => x.sku.i));
+      // Same estimate formula as bcore's missingDetails.
+      const sizeFactor = Math.min(2, Math.max(0.2, cl.rev / Math.max(1, a.meta.totalRevenue / a.clients.length)));
+      const focusEntries = focus
+        .filter(sid => !carriedSet.has(sid))
+        .map(sid => {
+          const sku = a.skuById.get(sid);
+          return {sid, name: sku.n, rank: sku.rank, est: sku.revPerStore * sizeFactor,
+                  suggestedUnits: Math.round(sku.unitsPerStore * sizeFactor)};
+        });
+      const focusIds = new Set(focusEntries.map(e => e.sid));
+      missing = [...focusEntries, ...missing.filter(m => !focusIds.has(m.sid))].slice(0, Math.max(8, focusEntries.length));
+    }
     rows.push({client: cl, topCarrying, missing});
   }
   return rows;
@@ -73,8 +93,8 @@ function downloadCSV(filename, headers, rows) {
   downloadBlob(blob, filename);
 }
 
-function exportCallSheetPrintable(a, clientIds) {
-  const data = buildCallSheetData(a, clientIds);
+function exportCallSheetPrintable(a, clientIds, focusSkuIds) {
+  const data = buildCallSheetData(a, clientIds, focusSkuIds);
   const w = window.open('', '_blank');
   if (!w) { alert('Pop-up blocked. Allow pop-ups to print.'); return; }
   const html = `<!doctype html><html><head><meta charset="utf-8"><title>Call Sheet — ${clientIds.length} stores</title>

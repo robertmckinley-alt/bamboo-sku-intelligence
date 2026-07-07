@@ -326,6 +326,9 @@ function CategoryLeaderboards({a, onPickSku}) {
     return arr;
   }, [a]);
   const [selected, setSelected] = useState(cats[0]);
+  // Hide pills can remove a whole category (e.g. hiding PICC after it became
+  // the only Prerolls content in a filtered view) — fall back to the top one.
+  const activeSelected = cats.includes(selected) ? selected : cats[0];
 
   // Top performers across ALL categories
   const summary = useMemo(() => {
@@ -353,13 +356,13 @@ function CategoryLeaderboards({a, onPickSku}) {
           <span className="text-[10px] font-mono text-slate-500 small-caps">{cats.length} categories · click a card for detail</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {cats.map(c => <CategoryCard key={c} a={a} cat={c} onPickSku={onPickSku} onSelect={setSelected} selected={selected===c} />)}
+          {cats.map(c => <CategoryCard key={c} a={a} cat={c} onPickSku={onPickSku} onSelect={setSelected} selected={activeSelected===c} />)}
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
-          <CategoryLeaderboard a={a} cat={selected} onPickSku={onPickSku} />
+          <CategoryLeaderboard a={a} cat={activeSelected} onPickSku={onPickSku} />
         </div>
         <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-200 bg-slate-50">
@@ -381,7 +384,7 @@ function CategoryLeaderboards({a, onPickSku}) {
             </thead>
             <tbody>
               {summary.map(s => (
-                <tr key={s.cat} onClick={() => setSelected(s.cat)} className={`cursor-pointer ${selected===s.cat?'selected':''}`}>
+                <tr key={s.cat} onClick={() => setSelected(s.cat)} className={`cursor-pointer ${activeSelected===s.cat?'selected':''}`}>
                   <td><div className="flex items-center gap-2"><span className="w-1.5 h-3 rounded-sm" style={{background:'#0b1220'}}></span>{s.cat}</div></td>
                   <td className="text-right tabular-nums font-mono">{s.count}</td>
                   <td className="text-right tabular-nums font-mono text-emerald-700 font-semibold">{fmt$(s.rev)}</td>

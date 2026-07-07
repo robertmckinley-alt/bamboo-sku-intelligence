@@ -7,10 +7,11 @@ const { Tag } = window.BambooUI;
 //   CLOSURES TAB — track "void closures" (new SKU placements)
 // ============================================================
 //
-// A "closure" = a (store, SKU group) pair that had zero revenue
-// yesterday and positive revenue today. Detected by the daily
-// diff cron (scripts/diff_closures.py) and appended to
-// data/closures.json with both Sales Rep and VMI Rep attribution.
+// A "closure" = new business in an existing store: either a priority
+// SKU first ordered at a store ("top-sku") or a retail-category line
+// first opened at a store ("cat-new"). Spec v2026-06-08-d. The daily
+// cron (scripts/refresh_closures.py) rebuilds data/closures.json from
+// scratch each run with both Sales Rep and VMI Rep attribution.
 //
 // MIN_CLOSURE_DATE is a hard floor — events on or before this date
 // are discarded everywhere in the UI. The 5/13 bootstrap run
@@ -32,22 +33,6 @@ function ClosuresPanel({a, hide}) {
   const [repFilter, setRepFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');   // 'All' | 'top-sku' | 'cat-new'
 
-  // Brand-hide flags (Micro Bar / Sungaze / PICC) come in via the analytics
-  // object — closures.json isn't filtered upstream like the matrix is.
-  const hidePatterns = useMemo(() => {
-    const out = [];
-    if (a && a.hide && a.hide.mb)   out.push('micro bar');
-    if (a && a.hide && a.hide.sg)   out.push('sungaze');
-    if (a && a.hide && a.hide.picc) out.push('picc');
-    return out;
-  }, [a && a.hide]);
-  const isHidden = (c) => {
-    if (!hidePatterns.length) return false;
-    const n = (c.skuName || '').toLowerCase();
-    const g = (c.skuGroup || '').toLowerCase();
-    for (const p of hidePatterns) { if (n.indexOf(p) >= 0 || g.indexOf(p) >= 0) return true; }
-    return false;
-  };
   const [range, setRange] = useState('thisweek');     // 'thisweek' | 'lastweek' | '30d' | '90d' | 'mtd' | 'qtd' | 'ytd' | 'all' | 'custom'
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -407,8 +392,8 @@ function ClosuresPanel({a, hide}) {
         <div className="bg-white border border-slate-200 rounded-lg p-10 text-center">
           <h3 className="font-display text-[16px] font-semibold text-slate-700 mb-2">No closures recorded yet</h3>
           <p className="text-[12px] text-slate-500 max-w-md mx-auto leading-relaxed">
-            Closures appear here once the daily data refresh detects new placements.
-            Wire <span className="font-mono">scripts/diff_closures.py</span> into your cron job — it compares yesterday's dataset against today's and appends any new (store × SKU group) placements to <span className="font-mono">data/closures.json</span>.
+            Closures appear here once the daily refresh detects new placements.
+            The GitHub Actions cron runs <span className="font-mono">scripts/refresh_closures.py</span> at 14:00 UTC — it diffs today's API snapshot against the frozen 5/31 baseline and rebuilds <span className="font-mono">data/closures.json</span>.
           </p>
         </div>
       ) : (
@@ -450,7 +435,7 @@ function ClosuresPanel({a, hide}) {
                             background: isProd ? 'rgba(245,158,11,.10)' : 'rgba(5,150,105,.10)',
                             color: isProd ? '#92400e' : '#065f46',
                             borderColor: isProd ? '#fde68a' : '#a7f3d0'}}
-                            title={isProd ? 'New product in a SKU group this store already carried' : 'First order in a brand-new SKU group for this store'}>
+                            title={isProd ? 'Retail-category line first opened at this store' : 'Priority SKU first ordered at this store'}>
                             {isProd ? 'New Category' : 'Top SKU'}
                           </span>
                         </td>
