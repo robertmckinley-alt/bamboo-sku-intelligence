@@ -55,6 +55,12 @@
     if (n.includes('macro bar') || n.includes('panda battery')) return 'Accessories';
     // Pocket Panda = pocket vape accessory
     if (n.includes('pocket panda')) return 'Accessories';
+    // PICC = partner preroll brand. The API scatters its groups across
+    // concentrates (hash/diamond keywords) and flower (uninfused rolls);
+    // ALL PICC — infused and non-infused — belongs in Prerolls (Johnny, 7/1).
+    if (n.includes('picc')) return 'Prerolls';
+    // Vape Carry Case = hardware accessory, not a vape product (Johnny, 7/1)
+    if (n.includes('vape carry case')) return 'Accessories';
     // Huxton = preroll brand (tins / multi packs)
     if (n.includes('huxton')) return 'Prerolls';
     // Bangers = infused preroll line (incl. Bubble Hash Bangers)

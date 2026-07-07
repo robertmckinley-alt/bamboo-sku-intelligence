@@ -2,10 +2,15 @@
 """
 build_penetration_goals.py
 ==========================
-Builds data/penetration_goals.json — a global mapping of {sku_group_id: goal}.
+Builds data/penetration_goals.json — a global mapping of
+{normalized_sku_group_name: goal}. Keyed by NAME (not ID) because the live
+API assigns SKU IDs dynamically; bcore.jsx looks goals up by the same
+normalized name.
 
-Source of truth: the "Categories with distribution goal" Google Sheet.
-Goals here are the *decimal* form of penetration goal (0.0 - 1.0).
+Source of truth: the "category goals" tab of the "Q3 2026 GOF Plan" workbook
+(Column I = Company goal %). Rows in blue there have NO goal assigned — leave
+them out of GOALS. PICC is 0.5 per Johnny 2026-07-02 (the sheet's 0.4 was a
+typo). Goals here are the *decimal* form of penetration goal (0.0 - 1.0).
 
 Naming reconciliation:
   • Goal-sheet rows end with a count e.g. "Core Flower 293" — that trailing
@@ -95,6 +100,28 @@ GOALS = [
     ("Panda Balm 1", 0.40),
     ("Panda Candies 1:1 CBD 2", 0.50),
     ("Topical Creams 1", 0.40),
+    # PICC — all groups at 0.5 (Johnny 2026-07-02; sheet's 0.4 was a typo)
+    ("PICC Collab 0.5g", 0.50),
+    ("PICC Collab 1g", 0.50),
+    ("PICC Collab 5pk 2.5g", 0.50),
+    ("PICC Diamondback Gorilla 0.5g", 0.50),
+    ("PICC Diamondback Gorilla 2pk 1g", 0.50),
+    ("PICC Diamondback Gorilla 5pk 2.5g", 0.50),
+    ("PICC FuFu 0.5g", 0.50),
+    ("PICC FuFu 1g", 0.50),
+    ("PICC FuFu 5pk 2.5g", 0.50),
+    ("PICC Hash Hole 1g", 0.50),
+    ("PICC Ichi Roll 1g - Full Flower Uninfused", 0.50),
+    ("PICC Killer Bee 2pk 1g", 0.50),
+    ("PICC Laff Gas 0.5g", 0.50),
+    ("PICC Laff Gas 1g", 0.50),
+    ("PICC Laff Gas 5pk 2.5g", 0.50),
+    ("PICC M1000 1g", 0.50),
+    ("PICC M80 0.5g", 0.50),
+    ("PICC Smack 1g", 0.50),
+    ("PICC Sushi Hash 1g", 0.50),
+    ("PICC Sushi Hash 5pk 2.5g", 0.50),
+    ("PICC Yellow Jackets 2pk 1g", 0.50),
 ]
 
 # Normalized-name aliases: goal-sheet name (after norm) -> dataset name (after norm)
@@ -125,13 +152,15 @@ def main():
     for name, val in GOALS:
         k = norm(name)
         k = ALIASES.get(k, k)
-        if k in sku_by_norm:
-            out[str(sku_by_norm[k]["i"])] = float(val)
-        else:
+        # Key by normalized name — bcore.jsx looks goals up the same way.
+        # Emit even when the group is missing from dataset.json (that file
+        # is a stale fallback; the live API may still carry the group).
+        out[k] = float(val)
+        if k not in sku_by_norm:
             unmatched.append(name)
 
     if unmatched:
-        print("WARN: unmatched goal-sheet rows:")
+        print("WARN: rows not found in dataset.json (kept anyway; dataset may be stale):")
         for u in unmatched:
             print("  -", u)
 
@@ -139,8 +168,8 @@ def main():
     with open(out_path, "w") as f:
         json.dump(out, f, indent=2, sort_keys=True)
 
-    print(f"Wrote {out_path}: {len(out)} / {len(GOALS)} SKU groups mapped")
-    return 0 if not unmatched else 1
+    print(f"Wrote {out_path}: {len(out)} goals ({len(unmatched)} not in dataset.json)")
+    return 0
 
 
 if __name__ == "__main__":
