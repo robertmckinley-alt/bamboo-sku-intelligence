@@ -281,7 +281,7 @@ function ClosuresPanel({a, hide}) {
     const stores = new Set(filtered.map(c => c.clientName)).size;
     // SKU groups: distinct parent group names (group rows use skuName; product rows
     // use skuGroup). This is the real ~82 SKU-group universe, not 1,000+ product names.
-    const groups = new Set(filtered.map(c => (c.type || "top-sku") === "cat-new" ? (c.skuGroup || "") : (c.skuName || ""))).size;
+    const groups = new Set(filtered.map(c => c.skuGroup).filter(Boolean)).size;
     // Products: distinct individual products won (only meaningful on type=product rows).
     const products = new Set(filtered.filter(c => (c.type || "top-sku") === "cat-new").map(c => c.skuName || "")).size;
     let topSkuCount = 0, catNewCount = 0;
