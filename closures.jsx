@@ -1,4 +1,39 @@
 /* eslint-disable */
+
+// BSI_TRANSFORM_V1 — dedup + retag + category override for closures.json.
+// Applied at load time so filters, KPIs, and log rows all see clean data.
+const BSI_CAT_OVERRIDES = [
+  { m: /live\s*resin.*(gumm|chocolat|caramel|brownie|cookie|candy|mint|hard\s*candy|lozeng|taff|choc)/i, cat: 'Edibles' },
+  { m: /\bLR\s*(gumm|chocolat|caramel|brownie|cookie|candy|edible)/i, cat: 'Edibles' },
+];
+function bsiFixCategory(c) {
+  const src = (c.skuName || '') + ' | ' + (c.skuGroup || c.skuName || '');
+  for (const r of BSI_CAT_OVERRIDES) if (r.m.test(src)) return r.cat;
+  return c.category || 'Other';
+}
+function transformClosures(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) return arr || [];
+  const patched = arr.map(c => Object.assign({}, c, { category: bsiFixCategory(c) }));
+  const sorted = patched.slice().sort((a, b) => (a.ts || '') < (b.ts || '') ? -1 : (a.ts || '') > (b.ts || '') ? 1 : 0);
+  const seenGrp = new Set();
+  const deduped = [];
+  for (const c of sorted) {
+    const grp = c.skuGroup || c.skuName || '';
+    const client = c.clientName || c.client || c.store;
+    if (!client || !grp) continue;
+    const k = client + '||' + grp;
+    if (seenGrp.has(k)) continue;
+    seenGrp.add(k);
+    deduped.push(c);
+  }
+  const seenCat = new Set();
+  return deduped.map(c => {
+    const catKey = (c.clientName || c.client || c.store) + '||' + c.category;
+    const isCatNew = !seenCat.has(catKey);
+    if (isCatNew) seenCat.add(catKey);
+    return Object.assign({}, c, { type: isCatNew ? 'cat-new' : 'top-sku' });
+  });
+}
 const { useState, useEffect, useMemo } = React;
 const { fmt$, fmtN, fmtPct } = window.BambooCore;
 const { Tag } = window.BambooUI;
@@ -69,7 +104,7 @@ function ClosuresPanel({a, hide}) {
             obj.vr = normVmiClosure(obj.vr);
             return obj;
           });
-          setClosures(arr);
+          setClosures(transformClosures(arr));
         } else {
           // Older array-of-objects shape; still backfill.
           const arr = (d || []).map(o => {
@@ -78,10 +113,10 @@ function ClosuresPanel({a, hide}) {
             o.vr = normVmiClosure(o.vr);
             return o;
           });
-          setClosures(arr);
+          setClosures(transformClosures(arr));
         }
       })
-      .catch(e => { setError(String(e)); setClosures([]); });
+      .catch(e => { setError(String(e)); setClosures(transformClosures([])); });
   }, []);
 
   // Apply the AppBar brand-hide pills (Micro Bar / Sungaze / PICC) to closures
