@@ -156,36 +156,54 @@ function ClosuresPanel({a, hide}) {
   }, [closures]);
 
   const {dateFrom, dateTo, rangeInfo} = useMemo(() => {
+    // Date-range boundaries computed in America/Los_Angeles so a week
+    // closes at midnight Pacific, not midnight UTC.
+    const PT_TZ = 'America/Los_Angeles';
+    const _dowNamesPT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const ptYmd = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: PT_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+    const ptDow = (d) => _dowNamesPT.indexOf(new Intl.DateTimeFormat('en-US', { timeZone: PT_TZ, weekday: 'short' }).format(d));
+    const ptDateFromYmd = (y, m, d) => {
+      let g = new Date(Date.UTC(y, m - 1, d, 19, 0, 0));
+      const p = ptYmd(g).split('-').map(Number);
+      if (p[0] !== y || p[1] !== m || p[2] !== d) {
+        const diff = (Date.UTC(y, m - 1, d) - Date.UTC(p[0], p[1] - 1, p[2])) / 86400000;
+        g = new Date(g.getTime() + diff * 86400000);
+      }
+      return g;
+    };
     const today = new Date();
-    const toIso = today.toISOString().slice(0, 10);
-    const days = (n) => { const d = new Date(today); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+    const toIso = ptYmd(today);
+    const [ptY, ptM, ptD] = toIso.split('-').map(Number);
+    const days = (n) => ptYmd(new Date(today.getTime() - n * 86400000));
     let requestedFrom = dataStart;
     let to = toIso;
     let label = range;
     // Week-bounds helper: Monday->Sunday in UTC so week math doesn't drift
     // across DST. Returns [mondayISO, sundayISO].
     const weekBounds = (refDate) => {
-      const d = new Date(Date.UTC(refDate.getUTCFullYear(), refDate.getUTCMonth(), refDate.getUTCDate()));
-      const dow = d.getUTCDay();                   // 0=Sun .. 6=Sat
+      const dow = ptDow(refDate);
       const offsetToMon = (dow === 0) ? -6 : (1 - dow);
-      d.setUTCDate(d.getUTCDate() + offsetToMon);
-      const start = d.toISOString().slice(0, 10);
-      const end = new Date(d); end.setUTCDate(end.getUTCDate() + 6);
-      return [start, end.toISOString().slice(0, 10)];
+      const [ry, rm, rd] = ptYmd(refDate).split('-').map(Number);
+      const mon = ptDateFromYmd(ry, rm, rd);
+      mon.setUTCDate(mon.getUTCDate() + offsetToMon);
+      const sun = new Date(mon.getTime() + 6 * 86400000);
+      return [ptYmd(mon), ptYmd(sun)];
     };
     if      (range === 'all')      requestedFrom = '0000-01-01';
     else if (range === 'thisweek') { const [m,_su] = weekBounds(today); requestedFrom = m; /* to stays today */ }
     else if (range === 'lastweek') { const [m,_su] = weekBounds(today);
-                                     const prevMon = new Date(m + 'T00:00:00Z'); prevMon.setUTCDate(prevMon.getUTCDate() - 7);
-                                     const prevSun = new Date(prevMon); prevSun.setUTCDate(prevSun.getUTCDate() + 6);
-                                     requestedFrom = prevMon.toISOString().slice(0,10);
-                                     to = prevSun.toISOString().slice(0,10); }
+                                     const [my, mm, md] = m.split('-').map(Number);
+                                     const prevMon = ptDateFromYmd(my, mm, md);
+                                     prevMon.setUTCDate(prevMon.getUTCDate() - 7);
+                                     const prevSun = new Date(prevMon.getTime() + 6 * 86400000);
+                                     requestedFrom = ptYmd(prevMon);
+                                     to = ptYmd(prevSun); }
     else if (range === '7d')       requestedFrom = days(7);
     else if (range === '30d')      requestedFrom = days(30);
     else if (range === '90d')    requestedFrom = days(90);
-    else if (range === 'mtd')    requestedFrom = today.toISOString().slice(0,8)+'01';
-    else if (range === 'qtd')    { const q = Math.floor(today.getMonth()/3)*3; requestedFrom = new Date(today.getFullYear(), q, 1).toISOString().slice(0,10); }
-    else if (range === 'ytd')    requestedFrom = today.getFullYear()+'-01-01';
+    else if (range === 'mtd')    requestedFrom = String(ptY) + '-' + String(ptM).padStart(2,'0') + '-01';
+    else if (range === 'qtd')    { const q = Math.floor((ptM - 1) / 3) * 3 + 1; requestedFrom = String(ptY) + '-' + String(q).padStart(2,'0') + '-01'; }
+    else if (range === 'ytd')    requestedFrom = String(ptY) + '-01-01';
     else if (range === 'custom') { requestedFrom = customFrom || dataStart; to = customTo || toIso; }
     // Clamp every chip's lower bound to where data actually begins. Today the
     // 30d chip (5/6) clamps to 5/13 since pre-5/13 events were folded into a
