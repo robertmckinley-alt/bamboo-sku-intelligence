@@ -171,6 +171,14 @@
     .main-stack { flex-direction: column !important; }
   }
 
+  /* Keep the expanded ten-tab navigation legible on standard laptop widths. */
+  @media (max-width: 1535px) {
+    .appbar { flex-wrap: wrap; }
+    .appbar-divider { display: none; }
+    .app-nav { order: 3; width: 100%; padding-top: 6px; border-top: 1px solid var(--line-soft); }
+    .app-actions { margin-left: auto; }
+  }
+
   /* Sparkline polish */
   .spark path { stroke-linejoin: round; stroke-linecap: round; }
 
@@ -185,19 +193,20 @@
 </head>
 <body>
 
-<script>window.__BAMBOO_BUILD = '20260707180000';</script>
+<script>window.__BAMBOO_BUILD = '20261007120000';</script>
 <div id="root"></div>
-<script type="text/babel" src="bcore.jsx?v=20260707180000"></script>
-<script type="text/babel" src="ui.jsx?v=20260707180000"></script>
-<script type="text/babel" src="tables.jsx?v=20260707180000"></script>
-<script type="text/babel" src="categories.jsx?v=20260707180000"></script>
-<script type="text/babel" src="panels.jsx?v=20260707180000"></script>
-<script type="text/babel" src="reps.jsx?v=20260707180000"></script>
-<script type="text/babel" src="topskus.jsx?v=20260707180000"></script>
-<script type="text/babel" src="closures.jsx?v=20260707180000"></script>
-<script type="text/babel" src="export.jsx?v=20260707180000"></script>
-<script type="text/babel" src="howto.jsx?v=20260707180000"></script>
-<script type="text/babel" src="apiAdapter.jsx?v=20260707180000"></script>
-    <script type="text/babel" src="main.jsx?v=20260707180000"></script>
+<script type="text/babel" src="bcore.jsx?v=20261007120000"></script>
+<script type="text/babel" src="ui.jsx?v=20261007120000"></script>
+<script type="text/babel" src="tables.jsx?v=20261007120000"></script>
+<script type="text/babel" src="categories.jsx?v=20261007120000"></script>
+<script type="text/babel" src="panels.jsx?v=20261007120000"></script>
+<script type="text/babel" src="reps.jsx?v=20261007120000"></script>
+<script type="text/babel" src="topskus.jsx?v=20261007120000"></script>
+<script type="text/babel" src="closures.jsx?v=20261007120000"></script>
+<script type="text/babel" src="sellthrough.jsx?v=20261007120000"></script>
+<script type="text/babel" src="export.jsx?v=20261007120000"></script>
+<script type="text/babel" src="howto.jsx?v=20261007120000"></script>
+<script type="text/babel" src="apiAdapter.jsx?v=20261007120000"></script>
+<script type="text/babel" src="main.jsx?v=20261007120000"></script>
 </body>
 </html>

@@ -5,7 +5,7 @@ const { Tag } = window.BambooUI;
 const SECTIONS = [
   {id: 'what', label: 'What this is'},
   {id: 'whats-new', label: "What's new"},
-  {id: 'views', label: 'The 8 main views'},
+  {id: 'views', label: 'The 9 main views'},
   {id: 'goals', label: 'Penetration goals'},
   {id: 'closures', label: 'Void closures'},
   {id: 'exports', label: 'Exporting data'},
@@ -93,14 +93,15 @@ function HowTo({a}) {
               <li><strong>Penetration goals</strong> — the SKU Engine and the Reps page now carry a <em>Goal</em> column (the target share of stores that should stock a SKU group) and a <em>To Goal</em> column (how many more stores it takes to get there).</li>
               <li><strong>Missing-product finder</strong> — on the Reps tab, click any SKU group in a rep's list to open a drawer that lists the products a chosen store isn't carrying yet, with rep / SKU-group / store dropdowns to pivot around.</li>
               <li><strong>Top SKUs tab</strong> — individual products ranked by category, with rep filters and a "missing only" toggle for fast pitch lists.</li>
+              <li><strong>Sellouts tab</strong> — twelve completed allocation weeks ranked by repeat sellouts, weighted sell-through, recent pressure, and conservative volume or pricing actions.</li>
               <li><strong>CSV exports everywhere</strong> — one-click <code>↓ CSV</code> buttons on the SKU Engine, the Reps store list, and the Closures log, plus the existing call-sheet CSV. Every export honors whatever filters and sort you have applied.</li>
               <li><strong>Trade-sample-only stores are hidden</strong> — a store that has only ever taken trade samples no longer clutters the reports; it reappears the moment it places a real revenue order.</li>
               <li><strong>Category cleanup</strong> — SKU groups are sorted into the right high-level category: Micro Bar → Vapes, Sungaze → Beverage, Mega Rolls / Huxton / all Bangers / all PICC → Prerolls, Macro Bar &amp; Panda Battery &amp; Vape Carry Case → Accessories, and more.</li>
             </ul>
           </Section>
 
-          <Section refs={refs} id="views" title="The 8 main views">
-            <p>The app has eight working surfaces plus this manual. Switch between them with the tab bar, or hit <Kbd>1</Kbd>–<Kbd>8</Kbd>.</p>
+          <Section refs={refs} id="views" title="The 9 main views">
+            <p>The app has nine working surfaces plus this manual. Switch between them with the tab bar, or hit <Kbd>1</Kbd>–<Kbd>9</Kbd>.</p>
 
             <Subsection name="1 · SKU Engine">
               <p>The master table. Every active SKU group, every metric, sortable by every column, filterable by category and by search. The <code>Revenue · Velocity · Distribution · Opportunity</code> toggle highlights whichever column you're hunting on. The <code>↓ CSV</code> button exports exactly what's on screen. Click any row to open the SKU detail panel.</p>
@@ -136,6 +137,11 @@ function HowTo({a}) {
 
             <Subsection name="8 · Buckets">
               <p>Curated shortlists so you don't have to filter for them: <strong>Top revenue drivers</strong>, <strong>Highest velocity</strong>, <strong>Most distributed</strong>, <strong>Hidden winners</strong> (fast movers that only sit on a fraction of doors — the highest-leverage things to pitch next) and <strong>Weak SKUs</strong>. Each row links into the detail panel.</p>
+            </Subsection>
+
+            <Subsection name="9 · Sellouts">
+              <p>Completed weekly warehouse allocations at the individual-product level. The twelve-cell pressure strip shows each product's weekly sell-through: rose is an exact sellout, orange is 90%+, and green is the healthy 70%–90% band. Use the signal, recent four-week rate, volume action and pricing note together. Click a row to see the full allocation history and the evidence behind the recommendation.</p>
+              <Example use="I want to find products that repeatedly run short" do="Open Sellouts, leave Decision-ready only checked, choose Chronic sellout, and sort Sold out descending. Open a product before changing volume so you can confirm the weekly pattern and current recommendation." />
             </Subsection>
           </Section>
 
@@ -175,6 +181,7 @@ function HowTo({a}) {
               <li><strong>SKU Engine → ↓ CSV</strong> — the full SKU table with every metric column, in whatever order and filter you've set.</li>
               <li><strong>Reps → store list → ↓ CSV</strong> — the selected rep's stores, with the active tag filter and sort applied.</li>
               <li><strong>Closures → ↓ Export CSV</strong> — the filtered closure log.</li>
+              <li><strong>Sellouts → Download CSV</strong> — the filtered product ranking with sell-through, allocation, pricing and volume fields.</li>
               <li><strong>Call sheets</strong> — printable PDF or CSV, per store or in bulk (see the next section).</li>
             </ul>
             <p className="text-stone-600 text-[12px]">
@@ -197,7 +204,7 @@ function HowTo({a}) {
             <table className="w-full text-[12px] my-4 border border-stone-200 rounded overflow-hidden">
               <tbody className="divide-y divide-stone-100">
                 <tr><td className="px-3 py-2 font-mono w-24"><Kbd>/</Kbd></td><td className="px-3 py-2">Focus the search box on the active table</td></tr>
-                <tr><td className="px-3 py-2 font-mono"><Kbd>1</Kbd>–<Kbd>8</Kbd></td><td className="px-3 py-2">Jump between tabs: 1 SKU Engine · 2 Retailers · 3 Matrix · 4 Categories · 5 Top SKUs · 6 Reps · 7 Closures · 8 Buckets</td></tr>
+                <tr><td className="px-3 py-2 font-mono"><Kbd>1</Kbd>–<Kbd>9</Kbd></td><td className="px-3 py-2">Jump between tabs: 1 SKU Engine · 2 Retailers · 3 Matrix · 4 Categories · 5 Top SKUs · 6 Reps · 7 Closures · 8 Buckets · 9 Sellouts</td></tr>
                 <tr><td className="px-3 py-2 font-mono"><Kbd>Esc</Kbd></td><td className="px-3 py-2">Close the open detail panel or modal</td></tr>
                 <tr><td className="px-3 py-2 font-mono"><Kbd>Tab</Kbd></td><td className="px-3 py-2">Walk forward through interactive elements (focus rings show where you are)</td></tr>
               </tbody>
@@ -252,7 +259,7 @@ function HowTo({a}) {
               </div>
             </div>
             <p>
-              The app reads the live Bamboo Intelligence API on load, so the numbers are current every time you open it. Trade-sample-only stores are filtered out so the reports count revenue-bearing business. The Closures tab is the one exception to "live" — it's a running history built by a daily job, because a closure only exists relative to the day before.
+              The app reads the live Bamboo Intelligence API on load, so the main sales numbers are current every time you open it. Trade-sample-only stores are filtered out so the reports count revenue-bearing business. Closures is a running history built by a daily job. Sellouts is a completed-week history refreshed every Monday after the source's Sunday close.
             </p>
           </Section>
 
