@@ -8,6 +8,7 @@ const { CategoryLeaderboards } = window.BambooCategories;
 const { RepsPanel } = window.BambooReps;
 const { TopSkusPanel } = window.BambooTopSkus;
 const { ClosuresPanel } = window.BambooClosures;
+const { SellThroughPanel } = window.BambooSellThrough;
 const { exportCallSheetCSV, exportCallSheetPrintable } = window.BambooExport;
 const { HowTo } = window.BambooHowTo;
 
@@ -85,6 +86,7 @@ function App() {
         if (e.key === '6') setTab('reps');
         if (e.key === '7') setTab('closures');
         if (e.key === '8') setTab('buckets');
+        if (e.key === '9') setTab('sellthrough');
       }
     };
     window.addEventListener('keydown', onKey);
@@ -102,6 +104,7 @@ function App() {
     {id:'reps', label:'Reps'},
     {id:'closures', label:'Closures'},
     {id:'buckets', label:'Buckets'},
+    {id:'sellthrough', label:'Sellouts'},
     {id:'howto', label:'How to Use'},
   ];
 
@@ -173,18 +176,21 @@ function App() {
               <Buckets a={analytics} onPickSku={setPickedSku} />
             </div>
           )}
+          {tab === 'sellthrough' && <SellThroughPanel />}
           {tab === 'howto' && <HowTo a={analytics} />}
         </div>
 
-        <aside className="rail w-72 border-l border-slate-200 bg-white flex-shrink-0 overflow-auto rail-stack no-print">
-          <RepLeaderboard a={analytics} onPickClient={setPickedClient} onExportRep={(rep, repType) => {
-            const field = repType === 'vr' ? 'vr' : 'sr';
-            const ids = analytics.clients.filter(c => (c[field]||'Unassigned') === rep).map(c => c.i);
-            exportCallSheetPrintable(analytics, ids);
-          }} />
-          <TagSummary a={analytics} />
-          <Footnote a={analytics} />
-        </aside>
+        {tab !== 'sellthrough' && (
+          <aside className="rail w-72 border-l border-slate-200 bg-white flex-shrink-0 overflow-auto rail-stack no-print">
+            <RepLeaderboard a={analytics} onPickClient={setPickedClient} onExportRep={(rep, repType) => {
+              const field = repType === 'vr' ? 'vr' : 'sr';
+              const ids = analytics.clients.filter(c => (c[field]||'Unassigned') === rep).map(c => c.i);
+              exportCallSheetPrintable(analytics, ids);
+            }} />
+            <TagSummary a={analytics} />
+            <Footnote a={analytics} />
+          </aside>
+        )}
       </div>
 
       {pickedSku != null && (

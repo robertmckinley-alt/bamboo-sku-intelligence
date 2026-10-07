@@ -7,7 +7,7 @@ overrides it. This repo copy is canonical; it supersedes the CLAUDE.md Google
 Doc in Drive (last updated 2026-06-08).
 
 Owner: Rob (robertmckinley@gmail.com / robertmckinley-alt on GitHub)
-Last meaningful update: 2026-07-07
+Last meaningful update: 2026-10-07
 
 ---
 
@@ -202,6 +202,7 @@ clamped. Table caps at 1,500 rendered rows; CSV exports everything.
 | closure-overrides.json | by hand | (clientName, skuName) pairs to suppress |
 | category_overrides.json | by hand | manual category remaps (legacy) |
 | penetration_goals.json | by hand | name-keyed goals (see §10) |
+| allocation_sell_through.json | weekly Monday job | 12 completed allocation weeks for Sellouts |
 | dataset.json | stale | static fallback if the live API fails |
 
 ## 13. Decisions log (so we don't relitigate)
@@ -224,6 +225,11 @@ clamped. Table caps at 1,500 rendered rows; CSV exports everything.
   to spec wording; __BAMBOO_BUILD must be bumped with any JSX change.
 - **Retailer revenue under hide pills includes hidden-brand $** — known,
   deliberate (see §8). Don't change without Rob.
+- **2026-10-07**: Sellouts tab added from the 12-week allocation endpoint.
+  Completed source periods are Sunday-Saturday and refresh Monday. Exact
+  sellout means allocated > 0, sold > 0, and unsold = 0. Trade samples,
+  unlimited/zero allocations, and non-marijuana merchandise are excluded.
+  Volume and price outputs are conservative signals, never automatic changes.
 
 ## 14. If the user opens with something vague
 
@@ -235,6 +241,20 @@ clamped. Table caps at 1,500 rendered rows; CSV exports everything.
 - "goal/category updates from Johnny" → §9/§10; his numbers come from the
   Q3 plan workbook's "category goals" tab, Column I; blue = no goal.
 - "VMI mode shows the wrong people" → §6 roster; ask before adding names.
+
+## 15. Weekly sell-through intelligence
+
+- Endpoint: `https://api-intelligence.getbamboo.com/api/reports/allocation-sell-through?limit=12`
+- Refresh: `.github/workflows/weekly-sell-through.yml`, Mondays at 15:30 UTC.
+- Builder: `scripts/refresh_sell_through.py`; output:
+  `data/allocation_sell_through.json`.
+- UI: `sellthrough.jsx`; main navigation label is **Sellouts** and keyboard
+  shortcut is `9`.
+- The endpoint contains completed weekly totals, not intraw​​eek timestamps.
+  Do not claim a precise sellout day or hour from this dataset.
+- Decision-ready rows require at least four available weeks and a median
+  weekly allocation of at least 25 units. Exact sellouts with weak weighted
+  sell-through are labeled Volatile allocation and receive no volume increase.
 
 If you update this file, bump "Last meaningful update" and add a §13 entry for
 anything worth not relitigating.

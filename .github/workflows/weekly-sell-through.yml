@@ -1,0 +1,53 @@
+name: Weekly Sell-Through Refresh
+
+on:
+  schedule:
+    # Monday after the API's Sunday 07:00 Pacific completed-week refresh.
+    # 15:30 UTC is 08:30 PDT / 07:30 PST.
+    - cron: '30 15 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: weekly-sell-through
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Refresh 12-week sell-through history
+        run: python scripts/refresh_sell_through.py
+
+      - name: Run sell-through rule tests
+        run: python -m unittest discover -s scripts -p 'test_sell_through.py'
+
+      - name: Commit changes if any
+        env:
+          AUTHOR_NAME: bamboo-sell-through-bot
+          AUTHOR_EMAIL: bamboo-sell-through-bot@users.noreply.github.com
+        run: |
+          git config user.name "$AUTHOR_NAME"
+          git config user.email "$AUTHOR_EMAIL"
+          git add data/allocation_sell_through.json
+          if git diff --quiet --cached; then
+            echo "No sell-through changes to commit."
+            exit 0
+          fi
+          STAMP="$(date -u +'%Y-%m-%d')"
+          git commit -m "Weekly sell-through refresh — ${STAMP}"
+          git push
