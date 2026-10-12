@@ -129,6 +129,25 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
   const highValMissing = nonCarriers.filter(x => x.client.storeTag === 'CALL NOW' || x.client.oppScore >= 70);
   const highValOpp = highValMissing.reduce((s, x) => s + x.est, 0);
 
+  const downloadStoreCsv = (carrying) => {
+    const slug = sku.n.replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 60);
+    const contextHeaders = ['SKU', 'Category', 'Period End', 'Store', 'Sales Rep', 'VMI Rep'];
+    const context = (client) => [sku.n, sku.c, a.meta.endDate, client.n, client.sr || '', client.vr || ''];
+    const headers = carrying
+      ? [...contextHeaders, 'SKU Revenue', 'Units', 'Percent of Store Revenue', 'Days Since Store Order', 'Last Store Order']
+      : [...contextHeaders, 'Tag', 'Opportunity Score', 'Store Revenue', 'Estimated Revenue', 'Suggested Units'];
+    const rows = carrying
+      ? sortedCarriers.map(({client, r, u}) => [
+          ...context(client), r, u, Number((100 * r / (client.rev || 1)).toFixed(2)),
+          client.daysSinceOrder ?? '', client.ls || '',
+        ])
+      : sortedNonCarriers.map(({client, est, suggestedUnits}) => [
+          ...context(client), client.storeTag || '', client.oppScore, client.rev,
+          Number(est.toFixed(2)), suggestedUnits,
+        ]);
+    window.BambooExport.downloadCSV(`sku-${slug}-stores-${carrying ? 'carrying' : 'not-carrying'}-${a.meta.endDate}.csv`, headers, rows);
+  };
+
   const togglePipeline = (cid) => {
     const s = new Set(pipelineIds);
     if (s.has(cid)) s.delete(cid); else s.add(cid);
@@ -239,9 +258,14 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
 
       <div className="grid grid-cols-2 divide-x divide-slate-200">
         <div className="overflow-hidden">
-          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between">
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between items-center gap-2 flex-wrap">
             <span>Carrying ({sortedCarriers.length}{sortedCarriers.length !== carriers.length ? ` of ${carriers.length}` : ''})</span>
-            <span className="font-mono text-slate-700">{fmt$(sku.rev)}</span>
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="font-mono text-slate-700">{fmt$(sku.rev)}</span>
+              <button type="button" onClick={() => downloadStoreCsv(true)} disabled={sortedCarriers.length === 0}
+                      className="btn btn-ghost text-[10px]" aria-label="Download stores carrying CSV"
+                      title="Download stores carrying this SKU with the current filters and sort order">↓ CSV</button>
+            </div>
           </div>
           <table className="dt">
             <thead>
@@ -274,9 +298,14 @@ function SkuDetail({a, skuId, onClose, onPickClient, onAddCallSheet, focusClient
           </table>
         </div>
         <div className="overflow-hidden">
-          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between items-center">
+          <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-600 font-semibold flex justify-between items-center gap-2 flex-wrap">
             <span>NOT carrying ({sortedNonCarriers.length}{sortedNonCarriers.length !== nonCarriers.length ? ` of ${nonCarriers.length}` : ''})</span>
-            <span className="font-mono text-emerald-700">opp {fmt$(totalOpp)}</span>
+            <div className="flex items-center gap-2 ml-auto">
+              <span className="font-mono text-emerald-700">opp {fmt$(totalOpp)}</span>
+              <button type="button" onClick={() => downloadStoreCsv(false)} disabled={sortedNonCarriers.length === 0}
+                      className="btn btn-ghost text-[10px]" aria-label="Download stores not carrying CSV"
+                      title="Download stores not carrying this SKU with the current filters and sort order">↓ CSV</button>
+            </div>
           </div>
           <table className="dt">
             <thead>
